@@ -1,29 +1,8 @@
-import sys
-from pathlib import Path
-from typing import Protocol
-
-# Add parent directory to sys.path for config import
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
 from caldav import DAVClient, Calendar
-from models import Task
+
+from ..core.models import Task
 from config import calendar_config
-
-
-class CalendarProvider(Protocol):
-    """Protocol for calendar provider implementations."""
-
-    def get_all_calendar_names(self) -> list[str]:
-        """Get a list of all calendar names."""
-        ...
-
-    def create_new_calendar(self, name: str) -> None:
-        """Create a new calendar with the given name."""
-        ...
-
-    def get_tasks(self, include_completed: bool = False) -> list[Task]:
-        """Get all tasks from all calendars."""
-        ...
+from .base import CalendarProvider
 
 
 class CalDavService:
