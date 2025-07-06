@@ -2,7 +2,7 @@ from datetime import date
 from caldav import Todo
 from pydantic import BaseModel, Field
 
-from ..utils.vcalendar_parser import vcalendar_to_dict
+from src.utils.vcalendar_parser import vcalendar_to_dict
 
 
 class TaskCreate(BaseModel):
@@ -27,6 +27,7 @@ class TaskComplete(BaseModel):
 
 
 class Task(BaseModel):
+    """Task model representing a calendar task/todo."""
     name: str  # Keep for backward compatibility, maps to summary
     summary: str | None = Field(default=None)  # VCALENDAR SUMMARY
     description: str | None = Field(default=None)  # VCALENDAR DESCRIPTION
