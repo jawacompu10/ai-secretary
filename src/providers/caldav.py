@@ -126,31 +126,42 @@ class CalDavService:
         except Exception as e:
             raise RuntimeError(f"Failed to create calendar '{name}': {e}")
 
-    def get_tasks(self, include_completed: bool = False) -> list[Task]:
-        """Get all tasks from all calendars.
+    def get_tasks(self, include_completed: bool = False, calendar_name: str | None = None) -> list[Task]:
+        """Get tasks from calendars, optionally filtered by calendar name.
 
         Args:
             include_completed (bool): Whether to include completed tasks
+            calendar_name (str | None): Filter tasks by specific calendar name, or None for all calendars
 
         Returns:
-            list[Task]: list of Task objects from all calendars
+            list[Task]: list of Task objects from specified calendar(s)
 
         Raises:
+            ValueError: If specified calendar not found
             RuntimeError: If unable to fetch tasks
         """
         tasks = []
         try:
-            for cal in self.calendars:
+            calendars_to_search = self.calendars
+            
+            # Filter to specific calendar if requested
+            if calendar_name:
+                target_calendar = self._find_calendar(calendar_name)
+                calendars_to_search = [target_calendar]
+            
+            for cal in calendars_to_search:
                 try:
-                    calendar_name = str(cal.name)
+                    cal_name = str(cal.name)
                     for todo in cal.todos(include_completed=include_completed):
-                        tasks.append(Task.from_todo(todo, calendar_name))
+                        tasks.append(Task.from_todo(todo, cal_name))
                 except Exception as e:
                     # Log warning but continue with other calendars
                     print(
                         f"Warning: Failed to get tasks from calendar '{cal.name}': {e}"
                     )
                     continue
+        except ValueError:
+            raise  # Re-raise calendar not found error
         except Exception as e:
             raise RuntimeError(f"Failed to get tasks: {e}")
 

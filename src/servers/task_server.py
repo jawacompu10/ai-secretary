@@ -1,3 +1,10 @@
+"""
+Task Management MCP Server
+
+This server provides tools for managing tasks/todos across calendars.
+Focused on task lifecycle: create, update, complete, and list tasks.
+"""
+
 import sys
 from pathlib import Path
 
@@ -15,43 +22,32 @@ from src.providers.caldav import create_calendar_provider
 
 # Initialize the calendar provider
 calendar_provider: CalendarProvider = create_calendar_provider()
-calendar_mcp = FastMCP("Calendar")
+task_mcp = FastMCP("Tasks")
 
 
-@calendar_mcp.tool("get_all_calendar_names")
-def get_all_calendars() -> list[str]:
-    """Get a list of different calendars of the user.
-
-    Returns:
-        list[str]: list of calendar names available to the user
-    """
-    return calendar_provider.get_all_calendar_names()
-
-
-@calendar_mcp.tool("create_new_calendar", description="Create a new calendar with given name")
-def create_new_calendar(name: str):
-    """Create a new calendar with the specified name.
-
-    Args:
-        name (str): Name for the new calendar
-    """
-    calendar_provider.create_new_calendar(name)
-
-
-@calendar_mcp.tool("get_tasks")
-def get_tasks(include_completed: bool = False) -> list[Task]:
-    """Get all tasks from all calendars.
+@task_mcp.tool("get_tasks")
+def get_tasks(include_completed: bool = False, calendar_name: str | None = None) -> list[Task]:
+    """Get tasks from calendars, optionally filtered by calendar name.
 
     Args:
         include_completed (bool): Whether to include completed tasks. Defaults to False.
+        calendar_name (str | None): Filter tasks by specific calendar name, or None for all calendars
 
     Returns:
-        list[Task]: list of Task objects from all calendars
+        list[Task]: List of Task objects from specified calendar(s)
+
+    Examples:
+        get_tasks()  # All tasks from all calendars
+        get_tasks(calendar_name="Work")  # Only work tasks
+        get_tasks(include_completed=True, calendar_name="Personal")  # All personal tasks including completed
     """
-    return calendar_provider.get_tasks(include_completed=include_completed)
+    return calendar_provider.get_tasks(
+        include_completed=include_completed,
+        calendar_name=calendar_name
+    )
 
 
-@calendar_mcp.tool("add_task")
+@task_mcp.tool("add_task")
 def add_task(task_data: TaskCreate) -> str:
     """Add a new task/todo to a specific calendar.
 
@@ -73,7 +69,7 @@ def add_task(task_data: TaskCreate) -> str:
     )
 
 
-@calendar_mcp.tool("edit_due_date")
+@task_mcp.tool("edit_due_date")
 def edit_due_date(task_update: TaskUpdate) -> str:
     """Update the due date of an existing task.
 
@@ -94,7 +90,7 @@ def edit_due_date(task_update: TaskUpdate) -> str:
     )
 
 
-@calendar_mcp.tool("complete_task")
+@task_mcp.tool("complete_task")
 def complete_task(task_complete: TaskComplete) -> str:
     """Mark an existing task as completed.
 
@@ -115,4 +111,4 @@ def complete_task(task_complete: TaskComplete) -> str:
 
 
 if __name__ == "__main__":
-    calendar_mcp.run(transport="stdio")
+    task_mcp.run(transport="stdio")

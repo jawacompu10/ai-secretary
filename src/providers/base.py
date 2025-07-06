@@ -14,8 +14,8 @@ class CalendarProvider(Protocol):
         """Create a new calendar with the given name."""
         ...
 
-    def get_tasks(self, include_completed: bool = False) -> list[Task]:
-        """Get all tasks from all calendars."""
+    def get_tasks(self, include_completed: bool = False, calendar_name: str | None = None) -> list[Task]:
+        """Get tasks from calendars, optionally filtered by calendar name."""
         ...
 
     def add_task(self, summary: str, calendar_name: str, due_date: str | None = None, description: str | None = None) -> str:
