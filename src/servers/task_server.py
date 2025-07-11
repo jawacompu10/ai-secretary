@@ -18,7 +18,7 @@ from mcp.server.fastmcp import FastMCP
 
 from src.core.models import Task, TaskCreate, TaskUpdate, TaskComplete
 from src.providers.base import CalendarProvider
-from src.providers.caldav import create_calendar_provider
+from src.providers.caldav_provider import create_calendar_provider
 
 # Initialize the calendar provider
 calendar_provider: CalendarProvider = create_calendar_provider()

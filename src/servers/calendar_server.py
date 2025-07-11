@@ -19,7 +19,7 @@ from mcp.server.fastmcp import FastMCP
 from datetime import datetime, timezone
 
 from src.providers.base import CalendarProvider
-from src.providers.caldav import create_calendar_provider
+from src.providers.caldav_provider import create_calendar_provider
 from src.utils.timezone_utils import get_user_timezone
 
 # Initialize the calendar provider

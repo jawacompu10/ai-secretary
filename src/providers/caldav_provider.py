@@ -1,6 +1,7 @@
 from caldav import DAVClient, Calendar
+from caldav.calendarobjectresource import Journal as CalDavJournal
 
-from src.core.models import Task, Event, EventCreate, EventUpdate, EventDelete, EventInstanceCancel, EventInstanceModify
+from src.core.models import Task, Event, EventCreate, EventUpdate, EventDelete, EventInstanceCancel, EventInstanceModify, Journal
 from src.utils.timezone_utils import parse_datetime_to_utc
 from config import calendar_config
 from .base import CalendarProvider
@@ -520,6 +521,118 @@ class CalDavService:
         except Exception as e:
             raise RuntimeError(f"Failed to modify event instance: {e}")
 
+    def create_journal(self, calendar_name: str, summary: str, description: str, date: str | None = None) -> str:
+        """Create a new journal entry in the specified calendar.
+
+        Args:
+            calendar_name (str): Name of the calendar to add the journal to
+            summary (str): Journal title/summary
+            description (str): Journal content/description
+            date (str | None): Journal date in ISO format (YYYY-MM-DD) or None for today
+
+        Returns:
+            str: Success message with journal details
+
+        Raises:
+            ValueError: If summary/description is empty or calendar not found
+            RuntimeError: If unable to create journal
+        """
+        if not summary or not summary.strip():
+            raise ValueError("Journal summary cannot be empty")
+
+        if not description or not description.strip():
+            raise ValueError("Journal description cannot be empty")
+
+        if not calendar_name or not calendar_name.strip():
+            raise ValueError("Calendar name cannot be empty")
+
+        try:
+            # Find the calendar
+            target_calendar = self._find_calendar(calendar_name)
+            
+            # Parse date if provided
+            dtstart = None
+            if date:
+                from datetime import datetime
+                try:
+                    dtstart = datetime.fromisoformat(date)
+                except ValueError:
+                    raise ValueError(f"Invalid date format: {date}. Expected YYYY-MM-DD")
+            
+            # Create the journal entry
+            target_calendar.save_journal(
+                summary=summary,
+                description=description,
+                dtstart=dtstart
+            )
+
+            date_str = f" on {date}" if date else ""
+            return f"Journal entry created in '{calendar_name}': '{summary}'{date_str} - {description}"
+
+        except ValueError:
+            raise  # Re-raise ValueError as-is
+        except Exception as e:
+            raise RuntimeError(f"Failed to create journal: {e}")
+
+    def get_journals(self, calendar_name: str | None = None, date: str | None = None) -> list[Journal]:
+        """Get journal entries, optionally filtered by calendar name and/or date.
+
+        Args:
+            calendar_name (str | None): Filter journals by specific calendar name, or None for all calendars
+            date (str | None): Filter journals by specific date in ISO format (YYYY-MM-DD), or None for all dates
+
+        Returns:
+            list[Journal]: List of Journal objects matching the criteria
+
+        Raises:
+            ValueError: If specified calendar not found or invalid date format
+            RuntimeError: If unable to fetch journals
+        """
+        journals = []
+        try:
+            # Parse date filter if provided
+            filter_date = None
+            if date:
+                from datetime import datetime
+                try:
+                    filter_date = datetime.fromisoformat(date).date()
+                except ValueError:
+                    raise ValueError(f"Invalid date format: {date}. Expected YYYY-MM-DD")
+
+            calendars_to_search = self.calendars
+            
+            # Filter to specific calendar if requested
+            if calendar_name:
+                target_calendar = self._find_calendar(calendar_name)
+                calendars_to_search = [target_calendar]
+            
+            for cal in calendars_to_search:
+                try:
+                    cal_name = str(cal.name)
+                    # Get all journals from the calendar
+                    cal_journals = cal.journals()
+                    
+                    for journal in cal_journals:
+                        journal_obj = Journal.from_caldav_journal(journal, cal_name)
+                        
+                        # Apply date filter if specified
+                        if filter_date and journal_obj.date_utc:
+                            journal_date = journal_obj.date_utc.date()
+                            if journal_date != filter_date:
+                                continue
+                        
+                        journals.append(journal_obj)
+                        
+                except Exception as e:
+                    print(f"Warning: Failed to get journals from calendar '{cal.name}': {e}")
+                    continue
+                    
+        except ValueError:
+            raise  # Re-raise date/calendar errors
+        except Exception as e:
+            raise RuntimeError(f"Failed to get journals: {e}")
+
+        return journals
 
 def create_calendar_provider() -> CalendarProvider:
     """Factory function to create a CalendarProvider instance with config."""

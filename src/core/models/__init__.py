@@ -11,6 +11,9 @@ from .task import Task, TaskCreate, TaskUpdate, TaskComplete
 # Event models  
 from .event import Event, EventCreate, EventUpdate, EventDelete, EventInstanceCancel, EventInstanceModify
 
+# Journal models
+from .journal import Journal
+
 __all__ = [
     # Task models
     "Task",
@@ -24,4 +27,6 @@ __all__ = [
     "EventDelete",
     "EventInstanceCancel",
     "EventInstanceModify",
+    # Journal models
+    "Journal",
 ]
