@@ -14,3 +14,7 @@ class JournalProvider(Protocol):
     def get_journals(self, calendar_name: str | None = None, date: str | None = None) -> list[Journal]:
         """Get journal entries, optionally filtered by calendar name and/or date."""
         ...
+
+    def edit_journal(self, summary: str, calendar_name: str, new_description: str, append: bool = True) -> str:
+        """Edit an existing journal entry's description."""
+        ...

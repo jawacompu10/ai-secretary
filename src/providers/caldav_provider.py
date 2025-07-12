@@ -75,6 +75,25 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
         
         raise ValueError(f"Task '{summary}' not found in calendar '{calendar.name}'")
 
+    def _find_journal(self, calendar, summary: str):
+        """Helper method to find a journal by summary in a calendar.
+        
+        Args:
+            calendar: Calendar object to search in
+            summary (str): Journal summary to find
+            
+        Returns:
+            Journal: The found journal object
+            
+        Raises:
+            ValueError: If journal not found
+        """
+        for journal in calendar.journals():
+            if Journal.from_caldav_journal(journal, calendar.name).summary == summary:
+                return journal
+        
+        raise ValueError(f"Journal '{summary}' not found in calendar '{calendar.name}'")
+
     def _parse_due_date(self, due_date_str: str | None):
         """Helper method to parse due date string.
         
@@ -635,6 +654,56 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
             raise RuntimeError(f"Failed to get journals: {e}")
 
         return journals
+
+    def edit_journal(self, summary: str, calendar_name: str, new_description: str, append: bool = True) -> str:
+        """Edit an existing journal entry's description.
+
+        Args:
+            summary (str): Journal summary to identify the journal
+            calendar_name (str): Calendar containing the journal
+            new_description (str): New description content
+            append (bool): If True, append to existing description with timestamp. If False, replace entirely.
+
+        Returns:
+            str: Success message with journal details
+
+        Raises:
+            ValueError: If journal or calendar not found, or if description is empty
+            RuntimeError: If unable to update journal
+        """
+        if not new_description or not new_description.strip():
+            raise ValueError("New description cannot be empty")
+
+        try:
+            # Find calendar and journal
+            target_calendar = self._find_calendar(calendar_name)
+            target_journal = self._find_journal(target_calendar, summary)
+            
+            # Get current description using utility function
+            from src.utils.vcalendar_parser import get_vcalendar_property, update_vcalendar_property
+            from src.utils.journal_utils import build_updated_description
+            
+            current_description = get_vcalendar_property(target_journal.data, 'DESCRIPTION') or ''
+            
+            # Build updated description using journal domain logic
+            updated_description = build_updated_description(current_description, new_description, append)
+            
+            # Update the journal data using utility function
+            target_journal.data = update_vcalendar_property(
+                target_journal.data, 
+                'DESCRIPTION', 
+                updated_description, 
+                'VJOURNAL'
+            )
+            target_journal.save()
+
+            mode_str = "appended to" if (append and current_description) else "updated in"
+            return f"Journal '{summary}' in '{calendar_name}' {mode_str}: {new_description[:50]}{'...' if len(new_description) > 50 else ''}"
+
+        except ValueError:
+            raise  # Re-raise ValueError as-is
+        except Exception as e:
+            raise RuntimeError(f"Failed to edit journal: {e}")
 
 def create_calendar_provider() -> CalDavService:
     """Factory function to create a CalDAV service with config."""

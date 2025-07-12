@@ -142,5 +142,70 @@ def get_journals(calendar_name: str | None = None, date: str | None = None) -> l
     return journal_provider.get_journals(calendar_name, date)
 
 
+@journal_mcp.tool("edit_journal")
+def edit_journal(calendar_name: str, summary: str, new_description: str, append: bool = True) -> str:
+    """Edit an existing journal entry's description.
+
+    Args:
+        calendar_name (str): Name of the calendar containing the journal
+        summary (str): Journal title/summary to identify which journal to edit
+        new_description (str): New description content to add or replace
+        append (bool): If True (default), append new content with timestamp. If False, replace entirely.
+
+    Returns:
+        str: Success message with journal update details
+
+    Examples:
+        # Append progress update to existing task journal (default behavior)
+        {
+            "calendar_name": "Work",
+            "summary": "Authentication Feature",
+            "new_description": "Completed OAuth integration testing. Ready for code review."
+        }
+
+        # Append meeting follow-up to existing journal
+        {
+            "calendar_name": "Work", 
+            "summary": "Q4 Planning Meeting",
+            "new_description": "Action items assigned: John - timeline review by Friday, Sarah - requirements draft by Wednesday.",
+            "append": true
+        }
+
+        # Replace entire description (for major corrections)
+        {
+            "calendar_name": "Personal",
+            "summary": "Weekend Reflection",
+            "new_description": "Corrected previous entry: Had a peaceful weekend focused on family time and outdoor activities.",
+            "append": false
+        }
+
+        # Add daily progress to task tracking
+        {
+            "calendar_name": "Work",
+            "summary": "Database Migration",
+            "new_description": "Day 3: Migration scripts tested on staging environment. Found and fixed 2 data type conflicts."
+        }
+
+    Use cases:
+        - **Task Progress Tracking**: Update ongoing project status and milestones
+        - **Meeting Follow-ups**: Add action items and outcomes to meeting journals  
+        - **Daily Work Logs**: Append daily progress to project journals
+        - **Learning Notes**: Add insights and learnings to study journals
+        - **Corrections**: Replace incorrect information with accurate details
+        - **Status Updates**: Track evolving situations and decisions
+
+    The append mode (default) preserves chronological history with timestamps:
+    ```
+    Original content here...
+
+    --- [2025-07-12 15:30] ---
+    New content appended here...
+    ```
+
+    The replace mode completely overwrites the existing description for major corrections or rewrites.
+    """
+    return journal_provider.edit_journal(summary, calendar_name, new_description, append)
+
+
 if __name__ == "__main__":
     journal_mcp.run(transport="stdio")
