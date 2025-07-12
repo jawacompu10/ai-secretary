@@ -19,12 +19,17 @@ from mcp.server.fastmcp import FastMCP
 from datetime import datetime, timezone
 
 from src.core.models import Journal
-from src.providers.base import CalendarProvider
+from src.providers.journal_provider import JournalProvider
 from src.providers.caldav_provider import create_calendar_provider
 from src.utils.timezone_utils import get_user_timezone
 
-# Initialize the calendar provider
-calendar_provider: CalendarProvider = create_calendar_provider()
+# Initialize the journal provider
+journal_provider: JournalProvider = create_calendar_provider()
+
+# Verify the provider supports journal operations
+if not isinstance(journal_provider, JournalProvider):
+    raise RuntimeError("Calendar provider doesn't support journal operations. Please use a provider that implements JournalProvider.")
+
 journal_mcp = FastMCP("Journal Management")
 
 
@@ -72,7 +77,7 @@ def create_journal(calendar_name: str, summary: str, description: str, date: str
         - Gratitude journaling and mindfulness notes
         - Meeting or event reflections
     """
-    return calendar_provider.create_journal(calendar_name, summary, description, date)
+    return journal_provider.create_journal(calendar_name, summary, description, date)
 
 
 @journal_mcp.tool("get_current_datetime")
@@ -134,7 +139,7 @@ def get_journals(calendar_name: str | None = None, date: str | None = None) -> l
         - Search for past thoughts and insights
         - Prepare for meetings by reviewing related journal entries
     """
-    return calendar_provider.get_journals(calendar_name, date)
+    return journal_provider.get_journals(calendar_name, date)
 
 
 if __name__ == "__main__":

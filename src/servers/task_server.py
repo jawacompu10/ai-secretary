@@ -17,11 +17,11 @@ if __name__ == "__main__":
 from mcp.server.fastmcp import FastMCP
 
 from src.core.models import Task, TaskCreate, TaskUpdate, TaskComplete
-from src.providers.base import CalendarProvider
+from src.providers.task_provider import TaskProvider
 from src.providers.caldav_provider import create_calendar_provider
 
-# Initialize the calendar provider
-calendar_provider: CalendarProvider = create_calendar_provider()
+# Initialize the task provider
+task_provider: TaskProvider = create_calendar_provider()
 task_mcp = FastMCP("Tasks")
 
 
@@ -41,7 +41,7 @@ def get_tasks(include_completed: bool = False, calendar_name: str | None = None)
         get_tasks(calendar_name="Work")  # Only work tasks
         get_tasks(include_completed=True, calendar_name="Personal")  # All personal tasks including completed
     """
-    return calendar_provider.get_tasks(
+    return task_provider.get_tasks(
         include_completed=include_completed,
         calendar_name=calendar_name
     )
@@ -61,7 +61,7 @@ def add_task(task_data: TaskCreate) -> str:
         {"summary": "Buy Eggs", "calendar_name": "Personal"}
         {"summary": "Automate Auth Test", "calendar_name": "Work", "due_date": "2025-07-10", "description": "Add unit tests for the new feature"}
     """
-    return calendar_provider.add_task(
+    return task_provider.add_task(
         summary=task_data.summary,
         calendar_name=task_data.calendar_name,
         due_date=task_data.due_date,
@@ -83,7 +83,7 @@ def edit_due_date(task_update: TaskUpdate) -> str:
         {"summary": "Buy Eggs", "calendar_name": "Personal", "new_due_date": "2025-07-08"}
         {"summary": "Automate Auth Test", "calendar_name": "Work", "new_due_date": null}
     """
-    return calendar_provider.edit_due_date(
+    return task_provider.edit_due_date(
         summary=task_update.summary,
         calendar_name=task_update.calendar_name,
         new_due_date=task_update.new_due_date
@@ -104,7 +104,7 @@ def complete_task(task_complete: TaskComplete) -> str:
         {"summary": "Buy Eggs", "calendar_name": "Personal"}
         {"summary": "Automate Auth Test", "calendar_name": "Work"}
     """
-    return calendar_provider.complete_task(
+    return task_provider.complete_task(
         summary=task_complete.summary,
         calendar_name=task_complete.calendar_name
     )

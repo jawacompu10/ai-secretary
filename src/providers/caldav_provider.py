@@ -4,10 +4,12 @@ from caldav.calendarobjectresource import Journal as CalDavJournal
 from src.core.models import Task, Event, EventCreate, EventUpdate, EventDelete, EventInstanceCancel, EventInstanceModify, Journal
 from src.utils.timezone_utils import parse_datetime_to_utc
 from config import calendar_config
-from .base import CalendarProvider
+from .calendar_provider import CalendarProvider
+from .task_provider import TaskProvider
+from .event_provider import EventProvider
+from .journal_provider import JournalProvider
 
-
-class CalDavService:
+class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvider):
     """CalDAV service implementation using caldav library."""
 
     def __init__(self, url: str, username: str, password: str):
@@ -634,8 +636,8 @@ class CalDavService:
 
         return journals
 
-def create_calendar_provider() -> CalendarProvider:
-    """Factory function to create a CalendarProvider instance with config."""
+def create_calendar_provider() -> CalDavService:
+    """Factory function to create a CalDAV service with config."""
     return CalDavService(
         url=calendar_config.url,
         username=calendar_config.username,

@@ -18,11 +18,11 @@ if __name__ == "__main__":
 from mcp.server.fastmcp import FastMCP
 
 from src.core.models import Event, EventCreate, EventUpdate, EventDelete, EventInstanceCancel, EventInstanceModify
-from src.providers.base import CalendarProvider
+from src.providers.event_provider import EventProvider
 from src.providers.caldav_provider import create_calendar_provider
 
-# Initialize the calendar provider
-calendar_provider: CalendarProvider = create_calendar_provider()
+# Initialize the event provider
+event_provider: EventProvider = create_calendar_provider()
 event_mcp = FastMCP("Event Management")
 
 
@@ -42,7 +42,7 @@ def get_events(start_date: str, end_date: str, calendar_name: str | None = None)
         get_events("2025-07-01", "2025-07-31")  # All events in July
         get_events("2025-07-06", "2025-07-12", "Work")  # Work events this week
     """
-    return calendar_provider.get_events(start_date, end_date, calendar_name)
+    return event_provider.get_events(start_date, end_date, calendar_name)
 
 
 @event_mcp.tool("add_event")
@@ -120,7 +120,7 @@ def add_event(event_data: EventCreate) -> str:
             "rrule": "FREQ=WEEKLY;UNTIL=20251201T000000Z"
         }
     """
-    return calendar_provider.add_event(event_data)
+    return event_provider.add_event(event_data)
 
 
 @event_mcp.tool("edit_event")
@@ -163,7 +163,7 @@ def edit_event(event_update: EventUpdate) -> str:
             "new_rrule": null
         }
     """
-    return calendar_provider.edit_event(event_update)
+    return event_provider.edit_event(event_update)
 
 
 @event_mcp.tool("delete_event")
@@ -187,7 +187,7 @@ def delete_event(event_delete: EventDelete) -> str:
             "calendar_name": "Personal"
         }
     """
-    return calendar_provider.delete_event(event_delete)
+    return event_provider.delete_event(event_delete)
 
 
 @event_mcp.tool("cancel_event_instance")
@@ -221,7 +221,7 @@ def cancel_event_instance(instance_cancel: EventInstanceCancel) -> str:
         - Temporary schedule conflicts
         - Keep recurring pattern but exclude specific dates
     """
-    return calendar_provider.cancel_event_instance(instance_cancel)
+    return event_provider.cancel_event_instance(instance_cancel)
 
 
 @event_mcp.tool("modify_event_instance")
@@ -267,7 +267,7 @@ def modify_event_instance(instance_modify: EventInstanceModify) -> str:
         - Extended sessions for special topics
         - Guest attendees requiring different arrangements
     """
-    return calendar_provider.modify_event_instance(instance_modify)
+    return event_provider.modify_event_instance(instance_modify)
 
 
 if __name__ == "__main__":
