@@ -3,6 +3,9 @@ from caldav.calendarobjectresource import Journal as CalDavJournal
 
 from src.core.models import Task, Event, EventCreate, EventUpdate, EventDelete, EventInstanceCancel, EventInstanceModify, Journal
 from src.utils.timezone_utils import parse_datetime_to_utc
+from src.utils.date_utils import parse_due_date, parse_date_range, parse_instance_date
+from src.utils.entity_finder_utils import find_calendar_by_name, find_task_by_summary, find_journal_by_summary, find_event_by_summary, find_recurring_event_by_summary
+from src.utils.validation_utils import validate_calendar_name, validate_task_summary, validate_journal_summary, validate_journal_description, validate_event_summary, validate_new_description
 from config import calendar_config
 from .calendar_provider import CalendarProvider
 from .task_provider import TaskProvider
@@ -37,83 +40,9 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
                 raise RuntimeError(f"Failed to fetch calendars: {e}")
         return self._calendars
 
-    def _find_calendar(self, calendar_name: str):
-        """Helper method to find a calendar by name.
-        
-        Args:
-            calendar_name (str): Name of the calendar to find
-            
-        Returns:
-            Calendar: The found calendar object
-            
-        Raises:
-            ValueError: If calendar not found
-        """
-        for calendar in self.calendars:
-            if str(calendar.name) == calendar_name:
-                return calendar
-        
-        available_calendars = [str(cal.name) for cal in self.calendars]
-        raise ValueError(f"Calendar '{calendar_name}' not found. Available calendars: {available_calendars}")
 
-    def _find_task(self, calendar, summary: str):
-        """Helper method to find a task by summary in a calendar.
-        
-        Args:
-            calendar: Calendar object to search in
-            summary (str): Task summary to find
-            
-        Returns:
-            Todo: The found todo object
-            
-        Raises:
-            ValueError: If task not found
-        """
-        for todo in calendar.todos():
-            if Task.from_todo(todo, calendar.name).summary == summary:
-                return todo
-        
-        raise ValueError(f"Task '{summary}' not found in calendar '{calendar.name}'")
 
-    def _find_journal(self, calendar, summary: str):
-        """Helper method to find a journal by summary in a calendar.
-        
-        Args:
-            calendar: Calendar object to search in
-            summary (str): Journal summary to find
-            
-        Returns:
-            Journal: The found journal object
-            
-        Raises:
-            ValueError: If journal not found
-        """
-        for journal in calendar.journals():
-            if Journal.from_caldav_journal(journal, calendar.name).summary == summary:
-                return journal
-        
-        raise ValueError(f"Journal '{summary}' not found in calendar '{calendar.name}'")
 
-    def _parse_due_date(self, due_date_str: str | None):
-        """Helper method to parse due date string.
-        
-        Args:
-            due_date_str (str | None): Due date in ISO format or None
-            
-        Returns:
-            date | None: Parsed date object or None
-            
-        Raises:
-            ValueError: If date format is invalid
-        """
-        if not due_date_str:
-            return None
-        
-        from datetime import datetime
-        try:
-            return datetime.fromisoformat(due_date_str).date()
-        except ValueError:
-            raise ValueError(f"Invalid due date format: {due_date_str}. Expected YYYY-MM-DD")
 
     def get_all_calendar_names(self) -> list[str]:
         """Get a list of all calendar names.
@@ -139,8 +68,7 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
             ValueError: If name is empty or invalid
             RuntimeError: If unable to create calendar
         """
-        if not name or not name.strip():
-            raise ValueError("Calendar name cannot be empty")
+        validate_calendar_name(name)
 
         try:
             self.principal.make_calendar(name)
@@ -169,7 +97,7 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
             
             # Filter to specific calendar if requested
             if calendar_name:
-                target_calendar = self._find_calendar(calendar_name)
+                target_calendar = find_calendar_by_name(self.calendars, calendar_name)
                 calendars_to_search = [target_calendar]
             
             for cal in calendars_to_search:
@@ -206,16 +134,13 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
             ValueError: If summary is empty or calendar not found
             RuntimeError: If unable to create task
         """
-        if not summary or not summary.strip():
-            raise ValueError("Task summary cannot be empty")
-
-        if not calendar_name or not calendar_name.strip():
-            raise ValueError("Calendar name cannot be empty")
+        validate_task_summary(summary)
+        validate_calendar_name(calendar_name)
 
         try:
             # Find the calendar and parse due date
-            target_calendar = self._find_calendar(calendar_name)
-            due_datetime = self._parse_due_date(due_date)
+            target_calendar = find_calendar_by_name(self.calendars, calendar_name)
+            due_datetime = parse_due_date(due_date)
 
             # Create the task
             target_calendar.save_todo(
@@ -250,11 +175,11 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
         """
         try:
             # Find calendar and task
-            target_calendar = self._find_calendar(calendar_name)
-            target_todo = self._find_task(target_calendar, summary)
+            target_calendar = find_calendar_by_name(self.calendars, calendar_name)
+            target_todo = find_task_by_summary(target_calendar, summary)
             
             # Parse new due date
-            new_due_datetime = self._parse_due_date(new_due_date)
+            new_due_datetime = parse_due_date(new_due_date)
 
             # Update the due date
             target_todo.set_due(new_due_datetime)
@@ -284,8 +209,8 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
         """
         try:
             # Find calendar and task
-            target_calendar = self._find_calendar(calendar_name)
-            target_todo = self._find_task(target_calendar, summary)
+            target_calendar = find_calendar_by_name(self.calendars, calendar_name)
+            target_todo = find_task_by_summary(target_calendar, summary)
 
             # Mark as completed
             target_todo.complete()
@@ -304,18 +229,13 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
         events = []
         try:
             # Parse date range
-            from datetime import datetime
-            try:
-                start_dt = datetime.fromisoformat(start_date)
-                end_dt = datetime.fromisoformat(end_date)
-            except ValueError:
-                raise ValueError(f"Invalid date format. Expected YYYY-MM-DD")
+            start_dt, end_dt = parse_date_range(start_date, end_date)
 
             calendars_to_search = self.calendars
             
             # Filter to specific calendar if requested
             if calendar_name:
-                target_calendar = self._find_calendar(calendar_name)
+                target_calendar = find_calendar_by_name(self.calendars, calendar_name)
                 calendars_to_search = [target_calendar]
             
             for cal in calendars_to_search:
@@ -340,7 +260,7 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
         """Add a new event to the specified calendar using EventCreate model."""
         try:
             # Find the calendar
-            target_calendar = self._find_calendar(event_data.calendar_name)
+            target_calendar = find_calendar_by_name(self.calendars, event_data.calendar_name)
             
             # Parse timezone-aware datetime strings and convert to UTC
             try:
@@ -372,17 +292,8 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
         """Update an existing event using EventUpdate model."""
         try:
             # Find calendar and event
-            target_calendar = self._find_calendar(event_update.calendar_name)
-            
-            # Find the event by summary (simplified approach)
-            target_event = None
-            for event in target_calendar.events():
-                if Event.from_caldav_event(event, event_update.calendar_name).summary == event_update.summary:
-                    target_event = event
-                    break
-
-            if not target_event:
-                raise ValueError(f"Event '{event_update.summary}' not found in calendar '{event_update.calendar_name}'")
+            target_calendar = find_calendar_by_name(self.calendars, event_update.calendar_name)
+            target_event = find_event_by_summary(target_calendar, event_update.summary)
 
             # Build list of what would be updated
             updates = []
@@ -409,17 +320,8 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
         """Delete an existing event using EventDelete model."""
         try:
             # Find calendar and event
-            target_calendar = self._find_calendar(event_delete.calendar_name)
-            
-            # Find the event by summary
-            target_event = None
-            for event in target_calendar.events():
-                if Event.from_caldav_event(event, event_delete.calendar_name).summary == event_delete.summary:
-                    target_event = event
-                    break
-
-            if not target_event:
-                raise ValueError(f"Event '{event_delete.summary}' not found in calendar '{event_delete.calendar_name}'")
+            target_calendar = find_calendar_by_name(self.calendars, event_delete.calendar_name)
+            target_event = find_event_by_summary(target_calendar, event_delete.summary)
 
             # Delete the event
             target_event.delete()
@@ -446,25 +348,11 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
         """
         try:
             # Find calendar and event
-            target_calendar = self._find_calendar(instance_cancel.calendar_name)
-            
-            # Find the recurring event by summary
-            target_event = None
-            for event in target_calendar.events():
-                event_obj = Event.from_caldav_event(event, instance_cancel.calendar_name)
-                if event_obj.summary == instance_cancel.summary and event_obj.is_recurring:
-                    target_event = event
-                    break
-
-            if not target_event:
-                raise ValueError(f"Recurring event '{instance_cancel.summary}' not found in calendar '{instance_cancel.calendar_name}'")
+            target_calendar = find_calendar_by_name(self.calendars, instance_cancel.calendar_name)
+            target_event = find_recurring_event_by_summary(target_calendar, instance_cancel.summary)
 
             # Parse the instance date
-            from datetime import datetime
-            try:
-                instance_dt = datetime.fromisoformat(instance_cancel.instance_date)
-            except ValueError:
-                raise ValueError(f"Invalid date format: {instance_cancel.instance_date}. Expected YYYY-MM-DD")
+            instance_dt = parse_instance_date(instance_cancel.instance_date)
 
             # Get the event's VEVENT data to modify
             event_data = target_event.data
@@ -497,25 +385,11 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
         """
         try:
             # Find calendar and event
-            target_calendar = self._find_calendar(instance_modify.calendar_name)
-            
-            # Find the recurring event by summary
-            target_event = None
-            for event in target_calendar.events():
-                event_obj = Event.from_caldav_event(event, instance_modify.calendar_name)
-                if event_obj.summary == instance_modify.summary and event_obj.is_recurring:
-                    target_event = event
-                    break
-
-            if not target_event:
-                raise ValueError(f"Recurring event '{instance_modify.summary}' not found in calendar '{instance_modify.calendar_name}'")
+            target_calendar = find_calendar_by_name(self.calendars, instance_modify.calendar_name)
+            target_event = find_recurring_event_by_summary(target_calendar, instance_modify.summary)
 
             # Parse the instance date
-            from datetime import datetime
-            try:
-                instance_dt = datetime.fromisoformat(instance_modify.instance_date)
-            except ValueError:
-                raise ValueError(f"Invalid date format: {instance_modify.instance_date}. Expected YYYY-MM-DD")
+            instance_dt = parse_instance_date(instance_modify.instance_date)
 
             # Build list of modifications
             modifications = []
@@ -558,18 +432,13 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
             ValueError: If summary/description is empty or calendar not found
             RuntimeError: If unable to create journal
         """
-        if not summary or not summary.strip():
-            raise ValueError("Journal summary cannot be empty")
-
-        if not description or not description.strip():
-            raise ValueError("Journal description cannot be empty")
-
-        if not calendar_name or not calendar_name.strip():
-            raise ValueError("Calendar name cannot be empty")
+        validate_journal_summary(summary)
+        validate_journal_description(description)
+        validate_calendar_name(calendar_name)
 
         try:
             # Find the calendar
-            target_calendar = self._find_calendar(calendar_name)
+            target_calendar = find_calendar_by_name(self.calendars, calendar_name)
             
             # Parse date if provided
             dtstart = None
@@ -614,17 +483,13 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
             # Parse date filter if provided
             filter_date = None
             if date:
-                from datetime import datetime
-                try:
-                    filter_date = datetime.fromisoformat(date).date()
-                except ValueError:
-                    raise ValueError(f"Invalid date format: {date}. Expected YYYY-MM-DD")
+                filter_date = parse_instance_date(date).date()
 
             calendars_to_search = self.calendars
             
             # Filter to specific calendar if requested
             if calendar_name:
-                target_calendar = self._find_calendar(calendar_name)
+                target_calendar = find_calendar_by_name(self.calendars, calendar_name)
                 calendars_to_search = [target_calendar]
             
             for cal in calendars_to_search:
@@ -671,13 +536,12 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
             ValueError: If journal or calendar not found, or if description is empty
             RuntimeError: If unable to update journal
         """
-        if not new_description or not new_description.strip():
-            raise ValueError("New description cannot be empty")
+        validate_new_description(new_description)
 
         try:
             # Find calendar and journal
-            target_calendar = self._find_calendar(calendar_name)
-            target_journal = self._find_journal(target_calendar, summary)
+            target_calendar = find_calendar_by_name(self.calendars, calendar_name)
+            target_journal = find_journal_by_summary(target_calendar, summary)
             
             # Get current description using utility function
             from src.utils.vcalendar_parser import get_vcalendar_property, update_vcalendar_property
