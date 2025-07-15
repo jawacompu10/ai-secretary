@@ -1,6 +1,15 @@
 from typing import Protocol
 
-from src.core.models import Task, Event, EventCreate, EventUpdate, EventDelete, EventInstanceCancel, EventInstanceModify, Journal
+from src.core.models import (
+    Task,
+    Event,
+    EventCreate,
+    EventUpdate,
+    EventDelete,
+    EventInstanceCancel,
+    EventInstanceModify,
+    Journal,
+)
 
 
 class CalendarProvider(Protocol):
@@ -14,15 +23,25 @@ class CalendarProvider(Protocol):
         """Create a new calendar with the given name."""
         ...
 
-    def get_tasks(self, include_completed: bool = False, calendar_name: str | None = None) -> list[Task]:
+    def get_tasks(
+        self, include_completed: bool = False, calendar_name: str | None = None
+    ) -> list[Task]:
         """Get tasks from calendars, optionally filtered by calendar name."""
         ...
 
-    def add_task(self, summary: str, calendar_name: str, due_date: str | None = None, description: str | None = None) -> str:
+    def add_task(
+        self,
+        summary: str,
+        calendar_name: str,
+        due_date: str | None = None,
+        description: str | None = None,
+    ) -> str:
         """Add a new task to the specified calendar."""
         ...
 
-    def edit_due_date(self, summary: str, calendar_name: str, new_due_date: str | None = None) -> str:
+    def edit_due_date(
+        self, summary: str, calendar_name: str, new_due_date: str | None = None
+    ) -> str:
         """Update the due date of an existing task."""
         ...
 
@@ -31,7 +50,9 @@ class CalendarProvider(Protocol):
         ...
 
     # Event methods
-    def get_events(self, start_date: str, end_date: str, calendar_name: str | None = None) -> list[Event]:
+    def get_events(
+        self, start_date: str, end_date: str, calendar_name: str | None = None
+    ) -> list[Event]:
         """Get events within a date range, optionally filtered by calendar name."""
         ...
 
@@ -56,10 +77,18 @@ class CalendarProvider(Protocol):
         ...
 
     # Journal methods
-    def create_journal(self, calendar_name: str, summary: str, description: str, date: str | None = None) -> str:
+    def create_journal(
+        self,
+        calendar_name: str,
+        summary: str,
+        description: str,
+        date: str | None = None,
+    ) -> str:
         """Create a new journal entry in the specified calendar."""
         ...
 
-    def get_journals(self, calendar_name: str | None = None, date: str | None = None) -> list[Journal]:
+    def get_journals(
+        self, calendar_name: str | None = None, date: str | None = None
+    ) -> list[Journal]:
         """Get journal entries, optionally filtered by calendar name and/or date."""
         ...

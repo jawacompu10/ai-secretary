@@ -1,13 +1,22 @@
 from typing import Protocol, runtime_checkable
 
-from src.core.models import Event, EventCreate, EventUpdate, EventDelete, EventInstanceCancel, EventInstanceModify
+from src.core.models import (
+    Event,
+    EventCreate,
+    EventUpdate,
+    EventDelete,
+    EventInstanceCancel,
+    EventInstanceModify,
+)
 
 
 @runtime_checkable
 class EventProvider(Protocol):
     """Protocol for event/meeting management operations."""
 
-    def get_events(self, start_date: str, end_date: str, calendar_name: str | None = None) -> list[Event]:
+    def get_events(
+        self, start_date: str, end_date: str, calendar_name: str | None = None
+    ) -> list[Event]:
         """Get events within a date range, optionally filtered by calendar name."""
         ...
 

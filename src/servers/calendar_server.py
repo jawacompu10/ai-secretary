@@ -33,7 +33,7 @@ def get_all_calendars() -> list[str]:
 
     Returns:
         list[str]: List of calendar names available to the user
-        
+
     Use cases:
         - See all calendars across different roles (Work, Personal, Projects)
         - Check available calendars before creating tasks or events
@@ -51,7 +51,7 @@ def create_new_calendar(name: str) -> str:
 
     Returns:
         str: Success message with calendar name
-        
+
     Examples:
         - "Work Q1 2025" - for work-specific items
         - "Home Renovation" - for project-specific organization
@@ -78,7 +78,7 @@ def get_current_datetime() -> dict:
     Example response:
         {
             "utc_datetime": "2025-07-06T20:30:00Z",
-            "local_datetime": "2025-07-06T15:30:00-05:00", 
+            "local_datetime": "2025-07-06T15:30:00-05:00",
             "timezone": "America/New_York",
             "current_date": "2025-07-06",
             "current_time": "15:30:00",
@@ -88,25 +88,25 @@ def get_current_datetime() -> dict:
     """
     # Get current UTC time (modern approach)
     utc_now = datetime.now(timezone.utc)
-    
-    # Get current time in user's timezone  
+
+    # Get current time in user's timezone
     user_tz = get_user_timezone()
     local_now = datetime.now(user_tz)
-    
+
     return {
-        "utc_datetime": utc_now.isoformat().replace('+00:00', 'Z'),
+        "utc_datetime": utc_now.isoformat().replace("+00:00", "Z"),
         "local_datetime": local_now.isoformat(),
         "timezone": str(user_tz),
         "current_date": local_now.strftime("%Y-%m-%d"),
         "current_time": local_now.strftime("%H:%M:%S"),
         "weekday": local_now.strftime("%A"),
-        "formatted": local_now.strftime("%A, %B %d, %Y at %I:%M %p")
+        "formatted": local_now.strftime("%A, %B %d, %Y at %I:%M %p"),
     }
 
 
 # TODO: Future calendar management features:
 # @calendar_mcp.tool("delete_calendar")
-# @calendar_mcp.tool("rename_calendar") 
+# @calendar_mcp.tool("rename_calendar")
 # @calendar_mcp.tool("archive_calendar")
 # @calendar_mcp.tool("get_calendar_info")
 # @calendar_mcp.tool("set_calendar_description")

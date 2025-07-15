@@ -1,16 +1,39 @@
-from caldav import DAVClient, Calendar
-from caldav.calendarobjectresource import Journal as CalDavJournal
+from caldav import DAVClient, Calendar, Journal as CaldavJournal
 
-from src.core.models import Task, Event, EventCreate, EventUpdate, EventDelete, EventInstanceCancel, EventInstanceModify, Journal
+from src.core.models import (
+    Task,
+    Event,
+    EventCreate,
+    EventUpdate,
+    EventDelete,
+    EventInstanceCancel,
+    EventInstanceModify,
+    Journal,
+)
+from src.core.models.journal import JournalDelete
 from src.utils.timezone_utils import parse_datetime_to_utc
 from src.utils.date_utils import parse_due_date, parse_date_range, parse_instance_date
-from src.utils.entity_finder_utils import find_calendar_by_name, find_task_by_summary, find_journal_by_summary, find_event_by_summary, find_recurring_event_by_summary
-from src.utils.validation_utils import validate_calendar_name, validate_task_summary, validate_journal_summary, validate_journal_description, validate_event_summary, validate_new_description
+from src.utils.entity_finder_utils import (
+    find_calendar_by_name,
+    find_task_by_summary,
+    find_journal_by_summary,
+    find_journal_by_summary_and_date,
+    find_event_by_summary,
+    find_recurring_event_by_summary,
+)
+from src.utils.validation_utils import (
+    validate_calendar_name,
+    validate_task_summary,
+    validate_journal_summary,
+    validate_journal_description,
+    validate_new_description,
+)
 from config import calendar_config
 from .calendar_provider import CalendarProvider
 from .task_provider import TaskProvider
 from .event_provider import EventProvider
 from .journal_provider import JournalProvider
+
 
 class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvider):
     """CalDAV service implementation using caldav library."""
@@ -39,10 +62,6 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
             except Exception as e:
                 raise RuntimeError(f"Failed to fetch calendars: {e}")
         return self._calendars
-
-
-
-
 
     def get_all_calendar_names(self) -> list[str]:
         """Get a list of all calendar names.
@@ -77,7 +96,9 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
         except Exception as e:
             raise RuntimeError(f"Failed to create calendar '{name}': {e}")
 
-    def get_tasks(self, include_completed: bool = False, calendar_name: str | None = None) -> list[Task]:
+    def get_tasks(
+        self, include_completed: bool = False, calendar_name: str | None = None
+    ) -> list[Task]:
         """Get tasks from calendars, optionally filtered by calendar name.
 
         Args:
@@ -94,12 +115,12 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
         tasks = []
         try:
             calendars_to_search = self.calendars
-            
+
             # Filter to specific calendar if requested
             if calendar_name:
                 target_calendar = find_calendar_by_name(self.calendars, calendar_name)
                 calendars_to_search = [target_calendar]
-            
+
             for cal in calendars_to_search:
                 try:
                     cal_name = str(cal.name)
@@ -118,7 +139,13 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
 
         return tasks
 
-    def add_task(self, summary: str, calendar_name: str, due_date: str | None = None, description: str | None = None) -> str:
+    def add_task(
+        self,
+        summary: str,
+        calendar_name: str,
+        due_date: str | None = None,
+        description: str | None = None,
+    ) -> str:
         """Add a new task to the specified calendar.
 
         Args:
@@ -144,9 +171,7 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
 
             # Create the task
             target_calendar.save_todo(
-                summary=summary,
-                due=due_datetime,
-                description=description
+                summary=summary, due=due_datetime, description=description
             )
 
             due_str = f" (due: {due_date})" if due_date else ""
@@ -158,7 +183,9 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
         except Exception as e:
             raise RuntimeError(f"Failed to create task: {e}")
 
-    def edit_due_date(self, summary: str, calendar_name: str, new_due_date: str | None = None) -> str:
+    def edit_due_date(
+        self, summary: str, calendar_name: str, new_due_date: str | None = None
+    ) -> str:
         """Update the due date of an existing task.
 
         Args:
@@ -177,7 +204,7 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
             # Find calendar and task
             target_calendar = find_calendar_by_name(self.calendars, calendar_name)
             target_todo = find_task_by_summary(target_calendar, summary)
-            
+
             # Parse new due date
             new_due_datetime = parse_due_date(new_due_date)
 
@@ -224,7 +251,9 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
             raise RuntimeError(f"Failed to complete task: {e}")
 
     # Event methods
-    def get_events(self, start_date: str, end_date: str, calendar_name: str | None = None) -> list[Event]:
+    def get_events(
+        self, start_date: str, end_date: str, calendar_name: str | None = None
+    ) -> list[Event]:
         """Get events within a date range, optionally filtered by calendar name."""
         events = []
         try:
@@ -232,23 +261,27 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
             start_dt, end_dt = parse_date_range(start_date, end_date)
 
             calendars_to_search = self.calendars
-            
+
             # Filter to specific calendar if requested
             if calendar_name:
                 target_calendar = find_calendar_by_name(self.calendars, calendar_name)
                 calendars_to_search = [target_calendar]
-            
+
             for cal in calendars_to_search:
                 try:
                     cal_name = str(cal.name)
                     # Query events in date range
-                    cal_events = cal.date_search(start=start_dt, end=end_dt, expand=True)
+                    cal_events = cal.date_search(
+                        start=start_dt, end=end_dt, expand=True
+                    )
                     for event in cal_events:
                         events.append(Event.from_caldav_event(event, cal_name))
                 except Exception as e:
-                    print(f"Warning: Failed to get events from calendar '{cal.name}': {e}")
+                    print(
+                        f"Warning: Failed to get events from calendar '{cal.name}': {e}"
+                    )
                     continue
-                    
+
         except ValueError:
             raise  # Re-raise date/calendar errors
         except Exception as e:
@@ -260,8 +293,10 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
         """Add a new event to the specified calendar using EventCreate model."""
         try:
             # Find the calendar
-            target_calendar = find_calendar_by_name(self.calendars, event_data.calendar_name)
-            
+            target_calendar = find_calendar_by_name(
+                self.calendars, event_data.calendar_name
+            )
+
             # Parse timezone-aware datetime strings and convert to UTC
             try:
                 start_dt_utc = parse_datetime_to_utc(event_data.start_datetime)
@@ -276,10 +311,12 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
                 summary=event_data.summary,
                 description=event_data.description,
                 location=event_data.location,
-                rrule=event_data.rrule
+                rrule=event_data.rrule,
             )
 
-            recurring_str = f" (recurring: {event_data.rrule})" if event_data.rrule else ""
+            recurring_str = (
+                f" (recurring: {event_data.rrule})" if event_data.rrule else ""
+            )
             location_str = f" at {event_data.location}" if event_data.location else ""
             return f"Event created in '{event_data.calendar_name}': '{event_data.summary}' from {event_data.start_datetime} to {event_data.end_datetime}{location_str}{recurring_str}"
 
@@ -292,8 +329,10 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
         """Update an existing event using EventUpdate model."""
         try:
             # Find calendar and event
-            target_calendar = find_calendar_by_name(self.calendars, event_update.calendar_name)
-            target_event = find_event_by_summary(target_calendar, event_update.summary)
+            target_calendar = find_calendar_by_name(
+                self.calendars, event_update.calendar_name
+            )
+            find_event_by_summary(target_calendar, event_update.summary)
 
             # Build list of what would be updated
             updates = []
@@ -320,7 +359,9 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
         """Delete an existing event using EventDelete model."""
         try:
             # Find calendar and event
-            target_calendar = find_calendar_by_name(self.calendars, event_delete.calendar_name)
+            target_calendar = find_calendar_by_name(
+                self.calendars, event_delete.calendar_name
+            )
             target_event = find_event_by_summary(target_calendar, event_delete.summary)
 
             # Delete the event
@@ -348,19 +389,17 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
         """
         try:
             # Find calendar and event
-            target_calendar = find_calendar_by_name(self.calendars, instance_cancel.calendar_name)
-            target_event = find_recurring_event_by_summary(target_calendar, instance_cancel.summary)
+            target_calendar = find_calendar_by_name(
+                self.calendars, instance_cancel.calendar_name
+            )
+            find_recurring_event_by_summary(target_calendar, instance_cancel.summary)
 
             # Parse the instance date
-            instance_dt = parse_instance_date(instance_cancel.instance_date)
+            parse_instance_date(instance_cancel.instance_date)
 
-            # Get the event's VEVENT data to modify
-            event_data = target_event.data
-            
             # Add EXDATE to exclude this instance
             # This is a simplified approach - in a full implementation we'd parse and modify the VEVENT properly
-            exdate_str = f"EXDATE:{instance_dt.strftime('%Y%m%d')}"
-            
+
             # For now, we'll return a success message indicating what would happen
             # In a full implementation, we'd modify the VEVENT and save it
             return f"Instance of '{instance_cancel.summary}' on {instance_cancel.instance_date} would be canceled (EXDATE added)"
@@ -385,11 +424,13 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
         """
         try:
             # Find calendar and event
-            target_calendar = find_calendar_by_name(self.calendars, instance_modify.calendar_name)
-            target_event = find_recurring_event_by_summary(target_calendar, instance_modify.summary)
+            target_calendar = find_calendar_by_name(
+                self.calendars, instance_modify.calendar_name
+            )
+            find_recurring_event_by_summary(target_calendar, instance_modify.summary)
 
             # Parse the instance date
-            instance_dt = parse_instance_date(instance_modify.instance_date)
+            parse_instance_date(instance_modify.instance_date)
 
             # Build list of modifications
             modifications = []
@@ -416,7 +457,13 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
         except Exception as e:
             raise RuntimeError(f"Failed to modify event instance: {e}")
 
-    def create_journal(self, calendar_name: str, summary: str, description: str, date: str | None = None) -> str:
+    def create_journal(
+        self,
+        calendar_name: str,
+        summary: str,
+        description: str,
+        date: str | None = None,
+    ) -> str:
         """Create a new journal entry in the specified calendar.
 
         Args:
@@ -439,21 +486,22 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
         try:
             # Find the calendar
             target_calendar = find_calendar_by_name(self.calendars, calendar_name)
-            
+
             # Parse date if provided
             dtstart = None
             if date:
                 from datetime import datetime
+
                 try:
                     dtstart = datetime.fromisoformat(date)
                 except ValueError:
-                    raise ValueError(f"Invalid date format: {date}. Expected YYYY-MM-DD")
-            
+                    raise ValueError(
+                        f"Invalid date format: {date}. Expected YYYY-MM-DD"
+                    )
+
             # Create the journal entry
             target_calendar.save_journal(
-                summary=summary,
-                description=description,
-                dtstart=dtstart
+                summary=summary, description=description, dtstart=dtstart
             )
 
             date_str = f" on {date}" if date else ""
@@ -464,7 +512,9 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
         except Exception as e:
             raise RuntimeError(f"Failed to create journal: {e}")
 
-    def get_journals(self, calendar_name: str | None = None, date: str | None = None) -> list[Journal]:
+    def get_journals(
+        self, calendar_name: str | None = None, date: str | None = None
+    ) -> list[Journal]:
         """Get journal entries, optionally filtered by calendar name and/or date.
 
         Args:
@@ -486,33 +536,35 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
                 filter_date = parse_instance_date(date).date()
 
             calendars_to_search = self.calendars
-            
+
             # Filter to specific calendar if requested
             if calendar_name:
                 target_calendar = find_calendar_by_name(self.calendars, calendar_name)
                 calendars_to_search = [target_calendar]
-            
+
             for cal in calendars_to_search:
                 try:
                     cal_name = str(cal.name)
                     # Get all journals from the calendar
                     cal_journals = cal.journals()
-                    
+
                     for journal in cal_journals:
                         journal_obj = Journal.from_caldav_journal(journal, cal_name)
-                        
+
                         # Apply date filter if specified
                         if filter_date and journal_obj.date_utc:
                             journal_date = journal_obj.date_utc.date()
                             if journal_date != filter_date:
                                 continue
-                        
+
                         journals.append(journal_obj)
-                        
+
                 except Exception as e:
-                    print(f"Warning: Failed to get journals from calendar '{cal.name}': {e}")
+                    print(
+                        f"Warning: Failed to get journals from calendar '{cal.name}': {e}"
+                    )
                     continue
-                    
+
         except ValueError:
             raise  # Re-raise date/calendar errors
         except Exception as e:
@@ -520,7 +572,13 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
 
         return journals
 
-    def edit_journal(self, summary: str, calendar_name: str, new_description: str, append: bool = True) -> str:
+    def edit_journal(
+        self,
+        summary: str,
+        calendar_name: str,
+        new_description: str,
+        append: bool = True,
+    ) -> str:
         """Edit an existing journal entry's description.
 
         Args:
@@ -542,32 +600,72 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
             # Find calendar and journal
             target_calendar = find_calendar_by_name(self.calendars, calendar_name)
             target_journal = find_journal_by_summary(target_calendar, summary)
-            
+
             # Get current description using utility function
-            from src.utils.vcalendar_parser import get_vcalendar_property, update_vcalendar_property
+            from src.utils.vcalendar_parser import (
+                get_vcalendar_property,
+                update_vcalendar_property,
+            )
             from src.utils.journal_utils import build_updated_description
-            
-            current_description = get_vcalendar_property(target_journal.data, 'DESCRIPTION') or ''
-            
+
+            current_description = (
+                get_vcalendar_property(target_journal.data, "DESCRIPTION") or ""
+            )
+
             # Build updated description using journal domain logic
-            updated_description = build_updated_description(current_description, new_description, append)
-            
+            updated_description = build_updated_description(
+                current_description, new_description, append
+            )
+
             # Update the journal data using utility function
             target_journal.data = update_vcalendar_property(
-                target_journal.data, 
-                'DESCRIPTION', 
-                updated_description, 
-                'VJOURNAL'
+                target_journal.data, "DESCRIPTION", updated_description, "VJOURNAL"
             )
             target_journal.save()
 
-            mode_str = "appended to" if (append and current_description) else "updated in"
+            mode_str = (
+                "appended to" if (append and current_description) else "updated in"
+            )
             return f"Journal '{summary}' in '{calendar_name}' {mode_str}: {new_description[:50]}{'...' if len(new_description) > 50 else ''}"
 
         except ValueError:
             raise  # Re-raise ValueError as-is
         except Exception as e:
             raise RuntimeError(f"Failed to edit journal: {e}")
+
+    def delete_journal(self, journal_delete: JournalDelete) -> str:
+        """Delete a journal entry from the specified calendar.
+
+        Args:
+            journal_delete (JournalDelete): Journal deletion details
+
+        Returns:
+            str: Success message with journal details
+
+        Raises:
+            ValueError: If journal or calendar not found
+            RuntimeError: If unable to delete journal
+        """
+        try:
+            # Find calendar and journal
+            target_calendar = find_calendar_by_name(
+                self.calendars, journal_delete.calendar_name
+            )
+            target_journal: CaldavJournal = find_journal_by_summary_and_date(
+                target_calendar, journal_delete.summary, journal_delete.date
+            )
+
+            # Delete the journal
+            target_journal.delete()
+
+            date_info = f" from {journal_delete.date}" if journal_delete.date else ""
+            return f"Journal '{journal_delete.summary}'{date_info} deleted from '{journal_delete.calendar_name}'"
+
+        except ValueError:
+            raise  # Re-raise validation errors
+        except Exception as e:
+            raise RuntimeError(f"Failed to delete journal: {e}")
+
 
 def create_calendar_provider() -> CalDavService:
     """Factory function to create a CalDAV service with config."""

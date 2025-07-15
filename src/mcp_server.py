@@ -6,21 +6,23 @@ since task management is the most commonly used functionality.
 
 For specific servers, run:
 - python src/servers/task_server.py        # Task management
-- python src/servers/calendar_server.py    # Calendar administration  
+- python src/servers/calendar_server.py    # Calendar administration
 - python src/servers/event_server.py       # Event scheduling (coming soon)
 """
 
 import sys
 from pathlib import Path
 
+from src.servers.calendar_server import calendar_mcp
+from src.servers.event_server import event_mcp
+from src.servers.task_server import task_mcp
+
+
 # Add project root to Python path when running directly
 root_dir = Path(__file__).parent.parent
 if str(root_dir) not in sys.path:
     sys.path.insert(0, str(root_dir))
 
-from src.servers.calendar_server import calendar_mcp
-from src.servers.event_server import event_mcp
-from src.servers.task_server import task_mcp
 
 if __name__ == "__main__":
     print("Starting Task Management MCP Server...")

@@ -17,7 +17,14 @@ if __name__ == "__main__":
 
 from mcp.server.fastmcp import FastMCP
 
-from src.core.models import Event, EventCreate, EventUpdate, EventDelete, EventInstanceCancel, EventInstanceModify
+from src.core.models import (
+    Event,
+    EventCreate,
+    EventUpdate,
+    EventDelete,
+    EventInstanceCancel,
+    EventInstanceModify,
+)
 from src.providers.event_provider import EventProvider
 from src.providers.caldav_provider import create_calendar_provider
 
@@ -27,7 +34,9 @@ event_mcp = FastMCP("Event Management")
 
 
 @event_mcp.tool("get_events")
-def get_events(start_date: str, end_date: str, calendar_name: str | None = None) -> list[Event]:
+def get_events(
+    start_date: str, end_date: str, calendar_name: str | None = None
+) -> list[Event]:
     """Get events within a date range, optionally filtered by calendar name.
 
     Args:
@@ -78,7 +87,7 @@ def add_event(event_data: EventCreate) -> str:
         # Weekly recurring meeting
         {
             "summary": "Weekly Review",
-            "calendar_name": "Work", 
+            "calendar_name": "Work",
             "start_datetime": "2025-07-08T14:00:00Z",
             "end_datetime": "2025-07-08T15:00:00Z",
             "rrule": "FREQ=WEEKLY;BYDAY=TU"
@@ -88,7 +97,7 @@ def add_event(event_data: EventCreate) -> str:
         {
             "summary": "Daily Standup",
             "calendar_name": "Work",
-            "start_datetime": "2025-07-08T14:00:00Z", 
+            "start_datetime": "2025-07-08T14:00:00Z",
             "end_datetime": "2025-07-08T14:15:00Z",
             "rrule": "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR"
         }
@@ -98,7 +107,7 @@ def add_event(event_data: EventCreate) -> str:
             "summary": "Monthly Planning",
             "calendar_name": "Work",
             "start_datetime": "2025-07-07T15:00:00Z",
-            "end_datetime": "2025-07-07T17:00:00Z", 
+            "end_datetime": "2025-07-07T17:00:00Z",
             "rrule": "FREQ=MONTHLY;BYDAY=1MO"
         }
 
@@ -113,7 +122,7 @@ def add_event(event_data: EventCreate) -> str:
 
         # Until specific date
         {
-            "summary": "Training Sessions", 
+            "summary": "Training Sessions",
             "calendar_name": "Personal",
             "start_datetime": "2025-07-08T23:00:00Z",
             "end_datetime": "2025-07-09T00:00:00Z",
@@ -152,7 +161,7 @@ def edit_event(event_update: EventUpdate) -> str:
         # Modify recurring pattern
         {
             "summary": "Daily Standup",
-            "calendar_name": "Work", 
+            "calendar_name": "Work",
             "new_rrule": "FREQ=WEEKLY;BYDAY=MO,WE,FR"
         }
 
@@ -183,7 +192,7 @@ def delete_event(event_delete: EventDelete) -> str:
         }
 
         {
-            "summary": "Personal Appointment", 
+            "summary": "Personal Appointment",
             "calendar_name": "Personal"
         }
     """
@@ -211,7 +220,7 @@ def cancel_event_instance(instance_cancel: EventInstanceCancel) -> str:
         # Cancel specific training session
         {
             "summary": "Weekly Training",
-            "calendar_name": "Personal", 
+            "calendar_name": "Personal",
             "instance_date": "2025-07-22"
         }
 

@@ -26,7 +26,9 @@ task_mcp = FastMCP("Tasks")
 
 
 @task_mcp.tool("get_tasks")
-def get_tasks(include_completed: bool = False, calendar_name: str | None = None) -> list[Task]:
+def get_tasks(
+    include_completed: bool = False, calendar_name: str | None = None
+) -> list[Task]:
     """Get tasks from calendars, optionally filtered by calendar name.
 
     Args:
@@ -42,8 +44,7 @@ def get_tasks(include_completed: bool = False, calendar_name: str | None = None)
         get_tasks(include_completed=True, calendar_name="Personal")  # All personal tasks including completed
     """
     return task_provider.get_tasks(
-        include_completed=include_completed,
-        calendar_name=calendar_name
+        include_completed=include_completed, calendar_name=calendar_name
     )
 
 
@@ -65,7 +66,7 @@ def add_task(task_data: TaskCreate) -> str:
         summary=task_data.summary,
         calendar_name=task_data.calendar_name,
         due_date=task_data.due_date,
-        description=task_data.description
+        description=task_data.description,
     )
 
 
@@ -86,7 +87,7 @@ def edit_due_date(task_update: TaskUpdate) -> str:
     return task_provider.edit_due_date(
         summary=task_update.summary,
         calendar_name=task_update.calendar_name,
-        new_due_date=task_update.new_due_date
+        new_due_date=task_update.new_due_date,
     )
 
 
@@ -105,8 +106,7 @@ def complete_task(task_complete: TaskComplete) -> str:
         {"summary": "Automate Auth Test", "calendar_name": "Work"}
     """
     return task_provider.complete_task(
-        summary=task_complete.summary,
-        calendar_name=task_complete.calendar_name
+        summary=task_complete.summary, calendar_name=task_complete.calendar_name
     )
 
 
