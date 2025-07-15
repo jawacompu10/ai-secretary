@@ -27,24 +27,51 @@ task_mcp = FastMCP("Tasks")
 
 @task_mcp.tool("get_tasks")
 def get_tasks(
-    include_completed: bool = False, calendar_name: str | None = None
+    include_completed: bool = False, calendar_name: str | None = None, past_days: int | None = None
 ) -> list[Task]:
-    """Get tasks from calendars, optionally filtered by calendar name.
+    """Get tasks from calendars, optionally filtered by calendar name and/or past days.
 
     Args:
         include_completed (bool): Whether to include completed tasks. Defaults to False.
         calendar_name (str | None): Filter tasks by specific calendar name, or None for all calendars
+        past_days (int | None): Filter by tasks due in past X days including today, or None for all tasks.
+                               🔥 AUTOMATIC DEFAULT: When include_completed=True and past_days=None, 
+                               this automatically defaults to 7 days to prevent overwhelming results.
 
     Returns:
         list[Task]: List of Task objects from specified calendar(s)
 
     Examples:
-        get_tasks()  # All tasks from all calendars
+        get_tasks()  # All active tasks from all calendars
         get_tasks(calendar_name="Work")  # Only work tasks
-        get_tasks(include_completed=True, calendar_name="Personal")  # All personal tasks including completed
+        get_tasks(include_completed=True)  # 🔥 AUTO-LIMITED: Completed tasks from past 7 days only
+        get_tasks(include_completed=True, past_days=30)  # Override: All tasks from past 30 days
+        get_tasks(past_days=7)  # Tasks due in past 7 days from all calendars
+        get_tasks(calendar_name="Work", past_days=14)  # Work tasks due in past 14 days
+        get_tasks(include_completed=True, calendar_name="Personal")  # 🔥 AUTO-LIMITED: Personal completed tasks from past 7 days
+
+    Use cases:
+        - **Recent task review**: Get past 7 days of tasks for weekly review
+        - **Completed task analysis**: Use include_completed=True for recent productivity analysis (auto-limited to 7 days)
+        - **Overdue task check**: Get past 1-3 days to find recently overdue tasks
+        - **Calendar-specific focus**: Combine calendar_name with past_days for targeted reviews
+        - **Avoid overwhelming results**: Completed tasks are auto-limited to 7 days unless past_days is specified
+
+    💡 Client Implementation Suggestion:
+        When include_completed=True and past_days is None, inform the user:
+        "Showing completed tasks from the past 7 days. Would you like to see more? 
+        I can get completed tasks from the past 30 days."
+
+    Note:
+        Tasks without due dates are always included when past_days filter is used, 
+        as they are considered "timeless" and still relevant.
     """
+    # Apply default past_days when include_completed=True to avoid overwhelming results
+    if include_completed and past_days is None:
+        past_days = 7  # Default to past 7 days for completed tasks
+    
     return task_provider.get_tasks(
-        include_completed=include_completed, calendar_name=calendar_name
+        include_completed=include_completed, calendar_name=calendar_name, past_days=past_days
     )
 
 

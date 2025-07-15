@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from caldav import DAVClient, Calendar, Journal as CaldavJournal
 
 from src.core.models import (
@@ -14,7 +16,7 @@ from src.core.models import (
 )
 from src.core.models.journal import JournalDelete
 from src.utils.timezone_utils import parse_datetime_to_utc
-from src.utils.date_utils import parse_due_date, parse_date_range, parse_instance_date
+from src.utils.date_utils import parse_due_date, parse_date_range, parse_instance_date, calculate_past_days_range
 from src.utils.entity_finder_utils import (
     find_calendar_by_name,
     find_task_by_summary,
@@ -99,23 +101,32 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
             raise RuntimeError(f"Failed to create calendar '{name}': {e}")
 
     def get_tasks(
-        self, include_completed: bool = False, calendar_name: str | None = None
+        self, include_completed: bool = False, calendar_name: str | None = None, past_days: int | None = None
     ) -> list[Task]:
-        """Get tasks from calendars, optionally filtered by calendar name.
+        """Get tasks from calendars, optionally filtered by calendar name and/or past days.
 
         Args:
             include_completed (bool): Whether to include completed tasks
             calendar_name (str | None): Filter tasks by specific calendar name, or None for all calendars
+            past_days (int | None): Filter by tasks due in past X days including today, or None for all tasks
 
         Returns:
             list[Task]: list of Task objects from specified calendar(s)
 
         Raises:
-            ValueError: If specified calendar not found
+            ValueError: If specified calendar not found or invalid past_days value
             RuntimeError: If unable to fetch tasks
         """
         tasks = []
         try:
+            # Parse past_days filter if provided
+            date_range_start = None
+            date_range_end = None
+            if past_days:
+                if not isinstance(past_days, int) or past_days < 1:
+                    raise ValueError(f"past_days must be a positive integer, got: {past_days}")
+                date_range_start, date_range_end = calculate_past_days_range(past_days)
+
             calendars_to_search = self.calendars
 
             # Filter to specific calendar if requested
@@ -127,7 +138,22 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
                 try:
                     cal_name = str(cal.name)
                     for todo in cal.todos(include_completed=include_completed):
-                        tasks.append(Task.from_todo(todo, cal_name))
+                        task = Task.from_todo(todo, cal_name)
+                        
+                        # Apply past_days filter if specified
+                        if date_range_start and date_range_end:
+                            # Include tasks without due dates (they're timeless/still relevant)
+                            if task.due_on is None:
+                                tasks.append(task)
+                                continue
+                            
+                            # Check if task's due date falls within the range
+                            if date_range_start <= task.due_on <= date_range_end:
+                                tasks.append(task)
+                        else:
+                            # No date filtering, include all tasks
+                            tasks.append(task)
+                            
                 except Exception as e:
                     # Log warning but continue with other calendars
                     print(
@@ -135,7 +161,7 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
                     )
                     continue
         except ValueError:
-            raise  # Re-raise calendar not found error
+            raise  # Re-raise calendar not found error and validation errors
         except Exception as e:
             raise RuntimeError(f"Failed to get tasks: {e}")
 
@@ -581,23 +607,23 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
             target_calendar = find_calendar_by_name(self.calendars, calendar_name)
 
             # Parse date if provided
+            original_date = date
             dtstart = None
-            if date:
-                from datetime import datetime
-
-                try:
-                    dtstart = datetime.fromisoformat(date)
-                except ValueError:
-                    raise ValueError(
-                        f"Invalid date format: {date}. Expected YYYY-MM-DD"
-                    )
+            if not date:
+                date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            try:
+                dtstart = datetime.fromisoformat(date)
+            except ValueError:
+                raise ValueError(
+                    f"Invalid date format: {date}. Expected YYYY-MM-DD"
+                )
 
             # Create the journal entry
             target_calendar.save_journal(
                 summary=summary, description=description, dtstart=dtstart
             )
 
-            date_str = f" on {date}" if date else ""
+            date_str = f" on {date}" if original_date else " (today)"
             return f"Journal entry created in '{calendar_name}': '{summary}'{date_str} - {description}"
 
         except ValueError:
@@ -606,27 +632,40 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
             raise RuntimeError(f"Failed to create journal: {e}")
 
     def get_journals(
-        self, calendar_name: str | None = None, date: str | None = None
+        self, calendar_name: str | None = None, date: str | None = None, past_days: int | None = None
     ) -> list[Journal]:
-        """Get journal entries, optionally filtered by calendar name and/or date.
+        """Get journal entries, optionally filtered by calendar name, date, or past days.
 
         Args:
             calendar_name (str | None): Filter journals by specific calendar name, or None for all calendars
             date (str | None): Filter journals by specific date in ISO format (YYYY-MM-DD), or None for all dates
+            past_days (int | None): Filter journals from past X days including today, or None for all dates
 
         Returns:
             list[Journal]: List of Journal objects matching the criteria
 
         Raises:
-            ValueError: If specified calendar not found or invalid date format
+            ValueError: If specified calendar not found, invalid date format, or both date and past_days are provided
             RuntimeError: If unable to fetch journals
         """
         journals = []
         try:
+            # Validate mutually exclusive parameters
+            if date and past_days:
+                raise ValueError("Cannot specify both 'date' and 'past_days' parameters. They are mutually exclusive.")
+            
             # Parse date filter if provided
             filter_date = None
             if date:
                 filter_date = parse_instance_date(date).date()
+            
+            # Parse past_days filter if provided
+            date_range_start = None
+            date_range_end = None
+            if past_days:
+                if not isinstance(past_days, int) or past_days < 1:
+                    raise ValueError(f"past_days must be a positive integer, got: {past_days}")
+                date_range_start, date_range_end = calculate_past_days_range(past_days)
 
             calendars_to_search = self.calendars
 
@@ -648,6 +687,12 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
                         if filter_date and journal_obj.date_utc:
                             journal_date = journal_obj.date_utc.date()
                             if journal_date != filter_date:
+                                continue
+                        
+                        # Apply past_days filter if specified
+                        if date_range_start and date_range_end and journal_obj.date_utc:
+                            journal_date = journal_obj.date_utc.date()
+                            if not (date_range_start <= journal_date <= date_range_end):
                                 continue
 
                         journals.append(journal_obj)

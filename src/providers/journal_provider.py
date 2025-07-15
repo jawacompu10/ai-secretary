@@ -19,9 +19,18 @@ class JournalProvider(Protocol):
         ...
 
     def get_journals(
-        self, calendar_name: str | None = None, date: str | None = None
+        self, calendar_name: str | None = None, date: str | None = None, past_days: int | None = None
     ) -> list[Journal]:
-        """Get journal entries, optionally filtered by calendar name and/or date."""
+        """Get journal entries, optionally filtered by calendar name, date, or past days.
+        
+        Args:
+            calendar_name: Filter by specific calendar name, or None for all calendars
+            date: Filter by specific date in ISO format (YYYY-MM-DD), or None for all dates
+            past_days: Filter by past X days including today, or None for all dates
+            
+        Note:
+            The 'date' and 'past_days' parameters are mutually exclusive.
+        """
         ...
 
     def edit_journal(

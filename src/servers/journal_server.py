@@ -102,13 +102,14 @@ def get_current_datetime() -> str:
 
 @journal_mcp.tool("get_journals")
 def get_journals(
-    calendar_name: str | None = None, date: str | None = None
+    calendar_name: str | None = None, date: str | None = None, past_days: int | None = None
 ) -> list[Journal]:
-    """Get journal entries, optionally filtered by calendar name and/or date.
+    """Get journal entries, optionally filtered by calendar name, date, or past days.
 
     Args:
         calendar_name (str | None): Filter by specific calendar name, or None for all calendars
         date (str | None): Filter by specific date in ISO format (YYYY-MM-DD), or None for all dates
+        past_days (int | None): Filter by past X days including today, or None for all dates
 
     Returns:
         list[Journal]: List of Journal objects matching the criteria
@@ -133,20 +134,35 @@ def get_journals(
             "date": "2025-07-11"
         }
 
-        # Get entries from last week
+        # Get recent journal entries from past 7 days
         {
-            "date": "2025-07-05"
+            "past_days": 7
+        }
+
+        # Get recent journal entries from past 30 days in specific calendar
+        {
+            "calendar_name": "Personal",
+            "past_days": 30
+        }
+
+        # Get today's journal entries only
+        {
+            "past_days": 1
         }
 
     Use cases:
-        - Review recent journal entries and reflections
-        - Find specific journal entries by date
-        - Browse journals from a particular calendar (Work, Personal, etc.)
-        - Analyze patterns in journaling habits
-        - Search for past thoughts and insights
-        - Prepare for meetings by reviewing related journal entries
+        - **Review recent reflections**: Get past 7 days of journal entries for quick review
+        - **Weekly/Monthly summaries**: Get past 30 days to prepare monthly reviews
+        - **Recent insights**: Get past 3 days to find recent thoughts and learnings
+        - **Specific date lookup**: Find journal entries from a particular date
+        - **Calendar-specific browsing**: Browse journals from specific contexts (Work, Personal, etc.)
+        - **Pattern analysis**: Analyze journaling habits and themes over time
+        - **Meeting preparation**: Review related journal entries before meetings
+
+    Note:
+        The 'date' and 'past_days' parameters are mutually exclusive. Use either one or the other, not both.
     """
-    return journal_provider.get_journals(calendar_name, date)
+    return journal_provider.get_journals(calendar_name, date, past_days)
 
 
 @journal_mcp.tool("edit_journal")

@@ -8,9 +8,19 @@ class TaskProvider(Protocol):
     """Protocol for task/todo management operations."""
 
     def get_tasks(
-        self, include_completed: bool = False, calendar_name: str | None = None
+        self, include_completed: bool = False, calendar_name: str | None = None, past_days: int | None = None
     ) -> list[Task]:
-        """Get tasks from calendars, optionally filtered by calendar name."""
+        """Get tasks from calendars, optionally filtered by calendar name and/or past days.
+        
+        Args:
+            include_completed: Whether to include completed tasks
+            calendar_name: Filter by specific calendar name, or None for all calendars
+            past_days: Filter by tasks due in past X days including today, or None for all tasks
+            
+        Note:
+            Tasks without due dates are always included when past_days filter is used,
+            as they are considered "timeless" and still relevant.
+        """
         ...
 
     def add_task(
