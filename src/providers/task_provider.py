@@ -1,6 +1,6 @@
 from typing import Protocol, runtime_checkable
 
-from src.core.models import Task
+from src.core.models import Task, TaskDelete, TaskMove
 
 
 @runtime_checkable
@@ -31,4 +31,12 @@ class TaskProvider(Protocol):
 
     def complete_task(self, summary: str, calendar_name: str) -> str:
         """Mark an existing task as completed."""
+        ...
+
+    def delete_task(self, task_delete: TaskDelete) -> str:
+        """Delete an existing task."""
+        ...
+
+    def move_task(self, task_move: TaskMove) -> str:
+        """Move a task from one calendar to another."""
         ...

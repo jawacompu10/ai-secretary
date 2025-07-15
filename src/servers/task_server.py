@@ -16,7 +16,7 @@ if __name__ == "__main__":
 
 from mcp.server.fastmcp import FastMCP
 
-from src.core.models import Task, TaskCreate, TaskUpdate, TaskComplete
+from src.core.models import Task, TaskCreate, TaskUpdate, TaskComplete, TaskDelete, TaskMove
 from src.providers.task_provider import TaskProvider
 from src.providers.caldav_provider import create_calendar_provider
 
@@ -108,6 +108,43 @@ def complete_task(task_complete: TaskComplete) -> str:
     return task_provider.complete_task(
         summary=task_complete.summary, calendar_name=task_complete.calendar_name
     )
+
+
+@task_mcp.tool("delete_task")
+def delete_task(task_delete: TaskDelete) -> str:
+    """Delete an existing task from a calendar.
+
+    Args:
+        task_delete (TaskDelete): Task deletion data including summary and calendar name
+
+    Returns:
+        str: Success message confirming task deletion
+
+    Examples:
+        {"summary": "Buy Eggs", "calendar_name": "Personal"}
+        {"summary": "Automate Auth Test", "calendar_name": "Work"}
+    """
+    return task_provider.delete_task(task_delete)
+
+
+@task_mcp.tool("move_task")
+def move_task(task_move: TaskMove) -> str:
+    """Move a task from one calendar to another.
+
+    This operation copies the task (including all properties like due date, description, 
+    and completion status) to the destination calendar and removes it from the source calendar.
+
+    Args:
+        task_move (TaskMove): Task move data including summary, source calendar, and destination calendar
+
+    Returns:
+        str: Success message confirming task move
+
+    Examples:
+        {"summary": "Schedule team meeting", "source_calendar": "Personal", "destination_calendar": "Work"}
+        {"summary": "Research new laptop", "source_calendar": "Work", "destination_calendar": "Personal"}
+    """
+    return task_provider.move_task(task_move)
 
 
 if __name__ == "__main__":

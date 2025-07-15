@@ -2,6 +2,8 @@ from caldav import DAVClient, Calendar, Journal as CaldavJournal
 
 from src.core.models import (
     Task,
+    TaskDelete,
+    TaskMove,
     Event,
     EventCreate,
     EventUpdate,
@@ -249,6 +251,97 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
             raise  # Re-raise ValueError as-is
         except Exception as e:
             raise RuntimeError(f"Failed to complete task: {e}")
+
+    def delete_task(self, task_delete: TaskDelete) -> str:
+        """Delete an existing task from the specified calendar.
+
+        Args:
+            task_delete (TaskDelete): Task deletion details
+
+        Returns:
+            str: Success message with task details
+
+        Raises:
+            ValueError: If task or calendar not found
+            RuntimeError: If unable to delete task
+        """
+        try:
+            # Find calendar and task
+            target_calendar = find_calendar_by_name(
+                self.calendars, task_delete.calendar_name
+            )
+            target_todo = find_task_by_summary(target_calendar, task_delete.summary)
+
+            # Delete the task
+            target_todo.delete()
+
+            return f"Task '{task_delete.summary}' deleted from '{task_delete.calendar_name}'"
+
+        except ValueError:
+            raise  # Re-raise ValueError as-is
+        except Exception as e:
+            raise RuntimeError(f"Failed to delete task: {e}")
+
+    def move_task(self, task_move: TaskMove) -> str:
+        """Move a task from one calendar to another.
+
+        This operation works by:
+        1. Finding the task in the source calendar
+        2. Extracting its properties (summary, description, due date, completion status)
+        3. Creating an identical task in the destination calendar
+        4. Deleting the original task from the source calendar
+
+        Args:
+            task_move (TaskMove): Task move details with source and destination calendars
+
+        Returns:
+            str: Success message with move details
+
+        Raises:
+            ValueError: If task, source calendar, or destination calendar not found
+            RuntimeError: If unable to move task
+        """
+        try:
+            # Find source calendar and task
+            source_calendar = find_calendar_by_name(
+                self.calendars, task_move.source_calendar
+            )
+            source_todo = find_task_by_summary(source_calendar, task_move.summary)
+
+            # Find destination calendar
+            destination_calendar = find_calendar_by_name(
+                self.calendars, task_move.destination_calendar
+            )
+
+            # Extract task properties from source task
+            from src.utils.vcalendar_parser import vcalendar_to_dict
+            props = vcalendar_to_dict(source_todo.data)
+            
+            summary = props.get("SUMMARY", "Untitled Task")
+            description = props.get("DESCRIPTION")
+            due_date = source_todo.get_due()
+            
+            # Create the task in destination calendar
+            destination_calendar.save_todo(
+                summary=summary, due=due_date, description=description
+            )
+
+            # If the original task was completed, mark the new one as completed
+            if props.get("STATUS") == "COMPLETED":
+                # Find the newly created task and mark it as completed
+                new_todo = find_task_by_summary(destination_calendar, summary)
+                new_todo.complete()
+                new_todo.save()
+
+            # Delete the original task from source calendar
+            source_todo.delete()
+
+            return f"Task '{task_move.summary}' moved from '{task_move.source_calendar}' to '{task_move.destination_calendar}'"
+
+        except ValueError:
+            raise  # Re-raise ValueError as-is
+        except Exception as e:
+            raise RuntimeError(f"Failed to move task: {e}")
 
     # Event methods
     def get_events(

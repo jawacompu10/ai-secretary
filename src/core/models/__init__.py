@@ -6,7 +6,7 @@ creation, update, and deletion operations.
 """
 
 # Task models
-from .task import Task, TaskCreate, TaskUpdate, TaskComplete
+from .task import Task, TaskCreate, TaskUpdate, TaskComplete, TaskDelete, TaskMove
 
 # Event models
 from .event import (
@@ -27,6 +27,8 @@ __all__ = [
     "TaskCreate",
     "TaskUpdate",
     "TaskComplete",
+    "TaskDelete",
+    "TaskMove",
     # Event models
     "Event",
     "EventCreate",

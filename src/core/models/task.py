@@ -37,6 +37,21 @@ class TaskComplete(BaseModel):
     calendar_name: str = Field(..., description="Calendar containing the task")
 
 
+class TaskDelete(BaseModel):
+    """Model for deleting a task."""
+
+    summary: str = Field(..., description="Task summary to identify the task")
+    calendar_name: str = Field(..., description="Calendar containing the task")
+
+
+class TaskMove(BaseModel):
+    """Model for moving a task between calendars."""
+
+    summary: str = Field(..., description="Task summary to identify the task")
+    source_calendar: str = Field(..., description="Source calendar containing the task")
+    destination_calendar: str = Field(..., description="Destination calendar for the task")
+
+
 class Task(BaseModel):
     """Task model representing a calendar task/todo."""
 
