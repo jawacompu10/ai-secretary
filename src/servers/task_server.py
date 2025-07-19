@@ -16,7 +16,7 @@ if __name__ == "__main__":
 
 from mcp.server.fastmcp import FastMCP
 
-from src.core.models import Task, TaskCreate, TaskUpdate, TaskComplete, TaskDelete, TaskMove
+from src.core.models import Task, TaskCreate, TaskUpdate, TaskComplete, TaskDelete, TaskMove, TaskStatusChange
 from src.providers.task_provider import TaskProvider
 from src.providers.caldav_provider import create_calendar_provider
 
@@ -172,6 +172,35 @@ def move_task(task_move: TaskMove) -> str:
         {"summary": "Research new laptop", "source_calendar": "Work", "destination_calendar": "Personal"}
     """
     return task_provider.move_task(task_move)
+
+
+@task_mcp.tool("change_status")
+def change_status(task_status_change: TaskStatusChange) -> str:
+    """Change the status of an existing task.
+
+    Args:
+        task_status_change (TaskStatusChange): Task status change data including summary, calendar name, and new status
+
+    Returns:
+        str: Success message confirming status change
+
+    Examples:
+        {"summary": "Research new laptop", "calendar_name": "Personal", "new_status": "IN-PROCESS"}
+        {"summary": "Review documentation", "calendar_name": "Work", "new_status": "COMPLETED"}
+        {"summary": "Call dentist", "calendar_name": "Personal", "new_status": "NEEDS-ACTION"}
+
+    Status Types:
+        - **NEEDS-ACTION**: Task needs to be done (default/initial state, use to "reopen" a task)
+        - **IN-PROCESS**: Task is currently being worked on
+        - **COMPLETED**: Task is finished
+
+    Use Cases:
+        - **Start working on a task**: Change from "NEEDS-ACTION" to "IN-PROCESS"
+        - **Complete a task**: Change to "COMPLETED" (alternative to complete_task tool)
+        - **Reopen a completed task**: Change from "COMPLETED" back to "NEEDS-ACTION"
+        - **Track work progress**: Move tasks through the workflow states
+    """
+    return task_provider.change_status(task_status_change)
 
 
 if __name__ == "__main__":

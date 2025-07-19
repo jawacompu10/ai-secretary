@@ -1,6 +1,8 @@
 from datetime import date
 from caldav import Todo
+import icalendar
 from pydantic import BaseModel, Field
+from typing import Literal
 
 from src.utils.vcalendar_parser import vcalendar_to_dict
 
@@ -50,6 +52,16 @@ class TaskMove(BaseModel):
     summary: str = Field(..., description="Task summary to identify the task")
     source_calendar: str = Field(..., description="Source calendar containing the task")
     destination_calendar: str = Field(..., description="Destination calendar for the task")
+
+
+class TaskStatusChange(BaseModel):
+    """Model for changing a task's status."""
+
+    summary: str = Field(..., description="Task summary to identify the task")
+    calendar_name: str = Field(..., description="Calendar containing the task")
+    new_status: Literal["NEEDS-ACTION", "IN-PROCESS", "COMPLETED"] = Field(
+        ..., description="New status to set for the task"
+    )
 
 
 class Task(BaseModel):

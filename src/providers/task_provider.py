@@ -1,6 +1,6 @@
 from typing import Protocol, runtime_checkable
 
-from src.core.models import Task, TaskDelete, TaskMove
+from src.core.models import Task, TaskDelete, TaskMove, TaskStatusChange
 
 
 @runtime_checkable
@@ -49,4 +49,8 @@ class TaskProvider(Protocol):
 
     def move_task(self, task_move: TaskMove) -> str:
         """Move a task from one calendar to another."""
+        ...
+
+    def change_status(self, task_status_change: TaskStatusChange) -> str:
+        """Change the status of an existing task."""
         ...
