@@ -16,6 +16,7 @@ from src.utils.validation_utils import (
     validate_journal_description,
     validate_new_description,
 )
+from src.utils.timezone_utils import get_user_timezone
 from .base import CalDavBase
 
 
@@ -68,10 +69,12 @@ class CalDavJournalService(JournalProvider):
                 date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
             try:
                 dtstart = datetime.fromisoformat(date)
+                # If no timezone specified, assume user's local timezone
+                if dtstart.tzinfo is None:
+                    user_tz = get_user_timezone()
+                    dtstart = dtstart.replace(tzinfo=user_tz)
             except ValueError:
-                raise ValueError(
-                    f"Invalid date format: {date}. Expected YYYY-MM-DD"
-                )
+                raise ValueError(f"Invalid date format: {date}. Expected YYYY-MM-DD")
 
             # Create the journal entry
             target_calendar.save_journal(
@@ -87,7 +90,10 @@ class CalDavJournalService(JournalProvider):
             raise RuntimeError(f"Failed to create journal: {e}")
 
     def get_journals(
-        self, calendar_name: str | None = None, date: str | None = None, past_days: int | None = None
+        self,
+        calendar_name: str | None = None,
+        date: str | None = None,
+        past_days: int | None = None,
     ) -> list[Journal]:
         """Get journal entries, optionally filtered by calendar name, date, or past days.
 
@@ -107,19 +113,23 @@ class CalDavJournalService(JournalProvider):
         try:
             # Validate mutually exclusive parameters
             if date and past_days:
-                raise ValueError("Cannot specify both 'date' and 'past_days' parameters. They are mutually exclusive.")
-            
+                raise ValueError(
+                    "Cannot specify both 'date' and 'past_days' parameters. They are mutually exclusive."
+                )
+
             # Parse date filter if provided
             filter_date = None
             if date:
                 filter_date = parse_instance_date(date).date()
-            
+
             # Parse past_days filter if provided
             date_range_start = None
             date_range_end = None
             if past_days:
                 if not isinstance(past_days, int) or past_days < 1:
-                    raise ValueError(f"past_days must be a positive integer, got: {past_days}")
+                    raise ValueError(
+                        f"past_days must be a positive integer, got: {past_days}"
+                    )
                 date_range_start, date_range_end = calculate_past_days_range(past_days)
 
             calendars_to_search = self.calendars
@@ -143,7 +153,7 @@ class CalDavJournalService(JournalProvider):
                             journal_date = journal_obj.date_utc.date()
                             if journal_date != filter_date:
                                 continue
-                        
+
                         # Apply past_days filter if specified
                         if date_range_start and date_range_end and journal_obj.date_utc:
                             journal_date = journal_obj.date_utc.date()

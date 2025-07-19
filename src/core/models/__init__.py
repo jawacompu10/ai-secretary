@@ -6,7 +6,15 @@ creation, update, and deletion operations.
 """
 
 # Task models
-from .task import Task, TaskCreate, TaskUpdate, TaskComplete, TaskDelete, TaskMove, TaskStatusChange
+from .task import (
+    Task,
+    TaskCreate,
+    TaskUpdate,
+    TaskComplete,
+    TaskDelete,
+    TaskMove,
+    TaskStatusChange,
+)
 
 # Event models
 from .event import (

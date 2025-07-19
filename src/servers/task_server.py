@@ -16,7 +16,15 @@ if __name__ == "__main__":
 
 from mcp.server.fastmcp import FastMCP
 
-from src.core.models import Task, TaskCreate, TaskUpdate, TaskComplete, TaskDelete, TaskMove, TaskStatusChange
+from src.core.models import (
+    Task,
+    TaskCreate,
+    TaskUpdate,
+    TaskComplete,
+    TaskDelete,
+    TaskMove,
+    TaskStatusChange,
+)
 from src.providers.task_provider import TaskProvider
 from src.providers.caldav_provider import create_calendar_provider
 
@@ -27,7 +35,9 @@ task_mcp = FastMCP("Tasks")
 
 @task_mcp.tool("get_tasks")
 def get_tasks(
-    include_completed: bool = False, calendar_name: str | None = None, past_days: int | None = None
+    include_completed: bool = False,
+    calendar_name: str | None = None,
+    past_days: int | None = None,
 ) -> list[Task]:
     """Get tasks from calendars, optionally filtered by calendar name and/or past days.
 
@@ -35,7 +45,7 @@ def get_tasks(
         include_completed (bool): Whether to include completed tasks. Defaults to False.
         calendar_name (str | None): Filter tasks by specific calendar name, or None for all calendars
         past_days (int | None): Filter by tasks due in past X days including today, or None for all tasks.
-                               🔥 AUTOMATIC DEFAULT: When include_completed=True and past_days=None, 
+                               🔥 AUTOMATIC DEFAULT: When include_completed=True and past_days=None,
                                this automatically defaults to 7 days to prevent overwhelming results.
 
     Returns:
@@ -59,19 +69,21 @@ def get_tasks(
 
     💡 Client Implementation Suggestion:
         When include_completed=True and past_days is None, inform the user:
-        "Showing completed tasks from the past 7 days. Would you like to see more? 
+        "Showing completed tasks from the past 7 days. Would you like to see more?
         I can get completed tasks from the past 30 days."
 
     Note:
-        Tasks without due dates are always included when past_days filter is used, 
+        Tasks without due dates are always included when past_days filter is used,
         as they are considered "timeless" and still relevant.
     """
     # Apply default past_days when include_completed=True to avoid overwhelming results
     if include_completed and past_days is None:
         past_days = 7  # Default to past 7 days for completed tasks
-    
+
     return task_provider.get_tasks(
-        include_completed=include_completed, calendar_name=calendar_name, past_days=past_days
+        include_completed=include_completed,
+        calendar_name=calendar_name,
+        past_days=past_days,
     )
 
 
@@ -158,7 +170,7 @@ def delete_task(task_delete: TaskDelete) -> str:
 def move_task(task_move: TaskMove) -> str:
     """Move a task from one calendar to another.
 
-    This operation copies the task (including all properties like due date, description, 
+    This operation copies the task (including all properties like due date, description,
     and completion status) to the destination calendar and removes it from the source calendar.
 
     Args:

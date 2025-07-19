@@ -96,7 +96,9 @@ def find_journal_by_summary(calendar: CalendarLike, summary: str) -> Any:
     )
 
 
-def find_journal_by_summary_and_date(calendar: CalendarLike, summary: str, date: str | None = None) -> Any:
+def find_journal_by_summary_and_date(
+    calendar: CalendarLike, summary: str, date: str | None = None
+) -> Any:
     """Find a journal by summary and optionally by date in a calendar.
 
     Args:
@@ -111,7 +113,7 @@ def find_journal_by_summary_and_date(calendar: CalendarLike, summary: str, date:
         ValueError: If journal not found or multiple journals found without date filter
     """
     matching_journals = []
-    
+
     for journal in calendar.journals():
         journal_obj = Journal.from_caldav_journal(journal, str(calendar.name))
         if journal_obj.summary == summary:
@@ -121,7 +123,7 @@ def find_journal_by_summary_and_date(calendar: CalendarLike, summary: str, date:
                 # Check if journal date matches (comparing just the date part)
                 if journal_obj.date_local and journal_obj.date_local.startswith(date):
                     matching_journals.append(journal)
-    
+
     if len(matching_journals) == 0:
         date_filter = f" with date '{date}'" if date else ""
         raise ValueError(
@@ -131,7 +133,7 @@ def find_journal_by_summary_and_date(calendar: CalendarLike, summary: str, date:
         raise ValueError(
             f"Multiple journals with summary '{summary}' found in calendar '{str(calendar.name)}'. Please specify a date to distinguish between them."
         )
-    
+
     return matching_journals[0]
 
 

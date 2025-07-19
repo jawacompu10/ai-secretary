@@ -38,7 +38,7 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
         """
         # Create single shared CalDAV base instance
         self._caldav_base = CalDavBase(url, username, password)
-        
+
         # Create specialized service instances with shared base
         self._calendar_service = CalDavCalendarService(self._caldav_base)
         self._task_service = CalDavTaskService(self._caldav_base)
@@ -57,7 +57,10 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
 
     # Task Provider methods - delegate to task service
     def get_tasks(
-        self, include_completed: bool = False, calendar_name: str | None = None, past_days: int | None = None
+        self,
+        include_completed: bool = False,
+        calendar_name: str | None = None,
+        past_days: int | None = None,
     ) -> list[Task]:
         """Get tasks from calendars, optionally filtered by calendar name and/or past days."""
         return self._task_service.get_tasks(include_completed, calendar_name, past_days)
@@ -70,7 +73,9 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
         description: str | None = None,
     ) -> str:
         """Add a new task to the specified calendar."""
-        return self._task_service.add_task(summary, calendar_name, due_date, description)
+        return self._task_service.add_task(
+            summary, calendar_name, due_date, description
+        )
 
     def edit_due_date(
         self, summary: str, calendar_name: str, new_due_date: str | None = None
@@ -130,10 +135,15 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
         date: str | None = None,
     ) -> str:
         """Create a new journal entry in the specified calendar."""
-        return self._journal_service.create_journal(calendar_name, summary, description, date)
+        return self._journal_service.create_journal(
+            calendar_name, summary, description, date
+        )
 
     def get_journals(
-        self, calendar_name: str | None = None, date: str | None = None, past_days: int | None = None
+        self,
+        calendar_name: str | None = None,
+        date: str | None = None,
+        past_days: int | None = None,
     ) -> list[Journal]:
         """Get journal entries, optionally filtered by calendar name, date, or past days."""
         return self._journal_service.get_journals(calendar_name, date, past_days)
@@ -146,7 +156,9 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
         append: bool = True,
     ) -> str:
         """Edit an existing journal entry's description."""
-        return self._journal_service.edit_journal(summary, calendar_name, new_description, append)
+        return self._journal_service.edit_journal(
+            summary, calendar_name, new_description, append
+        )
 
     def delete_journal(self, journal_delete: JournalDelete) -> str:
         """Delete a journal entry from the specified calendar."""

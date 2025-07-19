@@ -19,7 +19,10 @@ class CalDavTaskService(TaskProvider):
         return self.caldav_base.calendars
 
     def get_tasks(
-        self, include_completed: bool = False, calendar_name: str | None = None, past_days: int | None = None
+        self,
+        include_completed: bool = False,
+        calendar_name: str | None = None,
+        past_days: int | None = None,
     ) -> list[Task]:
         """Get tasks from calendars, optionally filtered by calendar name and/or past days.
 
@@ -42,7 +45,9 @@ class CalDavTaskService(TaskProvider):
             date_range_end = None
             if past_days:
                 if not isinstance(past_days, int) or past_days < 1:
-                    raise ValueError(f"past_days must be a positive integer, got: {past_days}")
+                    raise ValueError(
+                        f"past_days must be a positive integer, got: {past_days}"
+                    )
                 date_range_start, date_range_end = calculate_past_days_range(past_days)
 
             calendars_to_search = self.calendars
@@ -57,21 +62,21 @@ class CalDavTaskService(TaskProvider):
                     cal_name = str(cal.name)
                     for todo in cal.todos(include_completed=include_completed):
                         task = Task.from_todo(todo, cal_name)
-                        
+
                         # Apply past_days filter if specified
                         if date_range_start and date_range_end:
                             # Include tasks without due dates (they're timeless/still relevant)
                             if task.due_on is None:
                                 tasks.append(task)
                                 continue
-                            
+
                             # Check if task's due date falls within the range
                             if date_range_start <= task.due_on <= date_range_end:
                                 tasks.append(task)
                         else:
                             # No date filtering, include all tasks
                             tasks.append(task)
-                            
+
                 except Exception as e:
                     # Log warning but continue with other calendars
                     print(
@@ -259,12 +264,13 @@ class CalDavTaskService(TaskProvider):
 
             # Extract task properties from source task
             from src.utils.vcalendar_parser import vcalendar_to_dict
+
             props = vcalendar_to_dict(source_todo.data)
-            
+
             summary = props.get("SUMMARY", "Untitled Task")
             description = props.get("DESCRIPTION")
             due_date = source_todo.get_due()
-            
+
             # Create the task in destination calendar
             destination_calendar.save_todo(
                 summary=summary, due=due_date, description=description
@@ -305,7 +311,9 @@ class CalDavTaskService(TaskProvider):
             target_calendar = find_calendar_by_name(
                 self.calendars, task_status_change.calendar_name
             )
-            target_todo = find_task_by_summary(target_calendar, task_status_change.summary)
+            target_todo = find_task_by_summary(
+                target_calendar, task_status_change.summary
+            )
 
             # Set the new status
             if task_status_change.new_status == "COMPLETED":

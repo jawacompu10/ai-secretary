@@ -102,7 +102,9 @@ def get_current_datetime() -> str:
 
 @journal_mcp.tool("get_journals")
 def get_journals(
-    calendar_name: str | None = None, date: str | None = None, past_days: int | None = None
+    calendar_name: str | None = None,
+    date: str | None = None,
+    past_days: int | None = None,
 ) -> list[Journal]:
     """Get journal entries, optionally filtered by calendar name, date, or past days.
 

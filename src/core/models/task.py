@@ -1,6 +1,5 @@
 from datetime import date
 from caldav import Todo
-import icalendar
 from pydantic import BaseModel, Field
 from typing import Literal
 
@@ -51,7 +50,9 @@ class TaskMove(BaseModel):
 
     summary: str = Field(..., description="Task summary to identify the task")
     source_calendar: str = Field(..., description="Source calendar containing the task")
-    destination_calendar: str = Field(..., description="Destination calendar for the task")
+    destination_calendar: str = Field(
+        ..., description="Destination calendar for the task"
+    )
 
 
 class TaskStatusChange(BaseModel):

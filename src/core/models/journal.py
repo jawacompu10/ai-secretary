@@ -94,4 +94,7 @@ class JournalDelete(BaseModel):
 
     summary: str = Field(..., description="Journal summary to identify the journal")
     calendar_name: str = Field(..., description="Calendar containing the journal")
-    date: str | None = Field(None, description="Journal date in ISO format (YYYY-MM-DD) to distinguish between journals with same summary")
+    date: str | None = Field(
+        None,
+        description="Journal date in ISO format (YYYY-MM-DD) to distinguish between journals with same summary",
+    )
