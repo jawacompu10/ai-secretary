@@ -504,19 +504,5 @@ class TestCalDavJournalServiceIntegrationAdvanced:
         assert found_journal is not None
         assert len(found_journal.description) > 1000, "Long description was truncated"
 
-        # Handle CalDAV text encoding and line wrapping - normalize the content
-        # CalDAV servers can break words in the middle, so we need to rejoin them
-        normalized_description = found_journal.description.replace("\\n", "\n")
-        # Remove all line breaks and normalize whitespace
-        normalized_description = " ".join(normalized_description.split())
-
-        # Since CalDAV breaks "multiple" -> "multip le", let's check for the broken version
-        has_multiple_paragraphs = (
-            "multiple paragraphs" in normalized_description
-            or "multip le paragraphs" in normalized_description
-            or (
-                "multip" in normalized_description
-                and "le paragraphs" in normalized_description
-            )
-        )
-        assert has_multiple_paragraphs, f"Key phrase (multiple paragraphs) not found in any form in: {normalized_description[-300:]}"
+        # Check for key phrases in the description (no normalization needed with icalendar library)
+        assert "multiple paragraphs" in found_journal.description, f"Key phrase not found in: {found_journal.description[-200:]}"

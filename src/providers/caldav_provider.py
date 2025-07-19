@@ -18,11 +18,11 @@ from src.providers.event_provider import EventProvider
 from src.providers.journal_provider import JournalProvider
 from config import calendar_config
 
-from .caldav.base import CalDavBase
-from .caldav.calendar_service import CalDavCalendarService
-from .caldav.task_service import CalDavTaskService
-from .caldav.event_service import CalDavEventService
-from .caldav.journal_service import CalDavJournalService
+from .caldav_services.base import CalDavBase
+from .caldav_services.calendar_service import CalDavCalendarService
+from .caldav_services.task_service import CalDavTaskService
+from .caldav_services.event_service import CalDavEventService
+from .caldav_services.journal_service import CalDavJournalService
 
 
 class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvider):

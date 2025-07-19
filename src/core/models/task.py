@@ -3,7 +3,7 @@ from caldav import Todo
 from pydantic import BaseModel, Field
 from typing import Literal
 
-from src.utils.vcalendar_parser import vcalendar_to_dict
+from src.utils.icalendar_utils import parse_caldav_component, normalize_caldav_summary
 
 
 class TaskCreate(BaseModel):
@@ -80,8 +80,10 @@ class Task(BaseModel):
 
     @classmethod
     def from_todo(cls, todo: Todo, calendar_name: str):
-        props = vcalendar_to_dict(todo.data)
-        summary = props.get("SUMMARY", "Untitled Task")
+        props = parse_caldav_component(todo.data, "VTODO")
+        raw_summary = props.get("SUMMARY", "Untitled Task")
+        # Normalize summary to remove any CalDAV line break artifacts
+        summary = normalize_caldav_summary(raw_summary)
 
         return cls(
             name=summary,  # For backward compatibility

@@ -67,7 +67,7 @@ def find_task_by_summary(calendar: CalendarLike, summary: str) -> Any:
     Raises:
         ValueError: If task not found
     """
-    for todo in calendar.todos():
+    for todo in calendar.todos(include_completed=True):
         if Task.from_todo(todo, str(calendar.name)).summary == summary:
             return todo
 

@@ -190,6 +190,11 @@ class CalDavTaskService(TaskProvider):
             target_calendar = find_calendar_by_name(self.calendars, calendar_name)
             target_todo = find_task_by_summary(target_calendar, summary)
 
+            # Check if task is already completed
+            task_obj = Task.from_todo(target_todo, calendar_name)
+            if task_obj.completed:
+                return f"Task '{summary}' in '{calendar_name}' is already completed"
+
             # Mark as completed
             target_todo.complete()
             target_todo.save()
@@ -320,7 +325,7 @@ class CalDavTaskService(TaskProvider):
                 target_todo.complete()
             else:
                 # For NEEDS-ACTION and IN-PROCESS, set the status property directly
-                target_todo.set_properties({"STATUS": task_status_change.new_status})
+                target_todo.icalendar_component['STATUS'] = task_status_change.new_status
 
             # Save the changes
             target_todo.save()

@@ -3,7 +3,7 @@ from zoneinfo import ZoneInfo
 from caldav.calendarobjectresource import Journal as CalDavJournal
 from pydantic import BaseModel, Field
 
-from src.utils.vcalendar_parser import vcalendar_to_dict
+from src.utils.icalendar_utils import parse_caldav_component, normalize_caldav_summary
 from src.utils.timezone_utils import format_datetime_for_user
 
 
@@ -28,7 +28,7 @@ class Journal(BaseModel):
     @classmethod
     def from_caldav_journal(cls, journal: CalDavJournal, calendar_name: str):
         """Create Journal from CalDAV journal object with proper timezone handling."""
-        props = vcalendar_to_dict(journal.data)
+        props = parse_caldav_component(journal.data, "VJOURNAL")
 
         # Parse date field and convert to UTC
         date_dt_utc = None
@@ -40,8 +40,12 @@ class Journal(BaseModel):
             except (ValueError, AttributeError):
                 pass
 
+        raw_summary = props.get("SUMMARY", "Untitled Journal")
+        # Normalize summary to remove any CalDAV line break artifacts
+        summary = normalize_caldav_summary(raw_summary)
+
         return cls(
-            summary=props.get("SUMMARY", "Untitled Journal"),
+            summary=summary,
             description=props.get("DESCRIPTION"),
             calendar_name=calendar_name,
             date_utc=date_dt_utc,

@@ -3,7 +3,7 @@ from zoneinfo import ZoneInfo
 from caldav import Event as CalDavEvent
 from pydantic import BaseModel, Field
 
-from src.utils.vcalendar_parser import vcalendar_to_dict
+from src.utils.icalendar_utils import parse_caldav_component, normalize_caldav_summary
 from src.utils.timezone_utils import format_datetime_for_user
 
 
@@ -127,7 +127,7 @@ class Event(BaseModel):
     @classmethod
     def from_caldav_event(cls, event: CalDavEvent, calendar_name: str):
         """Create Event from CalDAV event object with proper timezone handling."""
-        props = vcalendar_to_dict(event.data)
+        props = parse_caldav_component(event.data, "VEVENT")
 
         # Parse datetime fields and convert to UTC
         start_dt_utc = None
@@ -151,8 +151,12 @@ class Event(BaseModel):
         rrule = props.get("RRULE")
         is_recurring = rrule is not None
 
+        raw_summary = props.get("SUMMARY", "Untitled Event")
+        # Normalize summary to remove any CalDAV line break artifacts
+        summary = normalize_caldav_summary(raw_summary)
+
         return cls(
-            summary=props.get("SUMMARY", "Untitled Event"),
+            summary=summary,
             description=props.get("DESCRIPTION"),
             calendar_name=calendar_name,
             start_datetime_utc=start_dt_utc,

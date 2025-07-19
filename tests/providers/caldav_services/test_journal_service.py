@@ -1,13 +1,13 @@
 """
-Tests for src.providers.caldav.journal_service module.
+Tests for src.providers.caldav_services.journal_service module.
 """
 
 import pytest
 from unittest.mock import Mock, patch
 from datetime import datetime, timezone
 
-from src.providers.caldav.journal_service import CalDavJournalService
-from src.providers.caldav.base import CalDavBase
+from src.providers.caldav_services.journal_service import CalDavJournalService
+from src.providers.caldav_services.base import CalDavBase
 
 
 @pytest.fixture
@@ -44,10 +44,10 @@ def mock_calendar_found():
 class TestCalDavJournalServiceCreate:
     """Tests for CalDavJournalService.create_journal method."""
 
-    @patch("src.providers.caldav.journal_service.find_calendar_by_name")
-    @patch("src.providers.caldav.journal_service.validate_journal_summary")
-    @patch("src.providers.caldav.journal_service.validate_journal_description")
-    @patch("src.providers.caldav.journal_service.validate_calendar_name")
+    @patch("src.providers.caldav_services.journal_service.find_calendar_by_name")
+    @patch("src.providers.caldav_services.journal_service.validate_journal_summary")
+    @patch("src.providers.caldav_services.journal_service.validate_journal_description")
+    @patch("src.providers.caldav_services.journal_service.validate_calendar_name")
     def test_journal_creation_with_explicit_date(
         self,
         mock_validate_calendar,
@@ -97,11 +97,11 @@ class TestCalDavJournalServiceCreate:
         expected_message = "Journal entry created in 'Personal': 'Test Journal Entry' on 2025-07-19 - This is a test journal entry."
         assert result == expected_message
 
-    @patch("src.providers.caldav.journal_service.find_calendar_by_name")
-    @patch("src.providers.caldav.journal_service.validate_journal_summary")
-    @patch("src.providers.caldav.journal_service.validate_journal_description")
-    @patch("src.providers.caldav.journal_service.validate_calendar_name")
-    @patch("src.providers.caldav.journal_service.datetime")
+    @patch("src.providers.caldav_services.journal_service.find_calendar_by_name")
+    @patch("src.providers.caldav_services.journal_service.validate_journal_summary")
+    @patch("src.providers.caldav_services.journal_service.validate_journal_description")
+    @patch("src.providers.caldav_services.journal_service.validate_calendar_name")
+    @patch("src.providers.caldav_services.journal_service.datetime")
     def test_journal_creation_with_today(
         self,
         mock_datetime,
@@ -145,10 +145,10 @@ class TestCalDavJournalServiceCreate:
         expected_message = "Journal entry created in 'Personal': 'Today's Journal' (today) - Auto-dated journal entry."
         assert result == expected_message
 
-    @patch("src.providers.caldav.journal_service.find_calendar_by_name")
-    @patch("src.providers.caldav.journal_service.validate_journal_summary")
-    @patch("src.providers.caldav.journal_service.validate_journal_description")
-    @patch("src.providers.caldav.journal_service.validate_calendar_name")
+    @patch("src.providers.caldav_services.journal_service.find_calendar_by_name")
+    @patch("src.providers.caldav_services.journal_service.validate_journal_summary")
+    @patch("src.providers.caldav_services.journal_service.validate_journal_description")
+    @patch("src.providers.caldav_services.journal_service.validate_calendar_name")
     def test_journal_creation_different_timezones(
         self,
         mock_validate_calendar,
@@ -195,11 +195,11 @@ class TestCalDavJournalServiceCreate:
             expected_message = f"Journal entry created in 'Personal': 'Entry for {test_date}' on {test_date} - Journal entry for {test_date}."
             assert result == expected_message
 
-    @patch("src.providers.caldav.journal_service.find_calendar_by_name")
-    @patch("src.providers.caldav.journal_service.validate_journal_summary")
-    @patch("src.providers.caldav.journal_service.validate_journal_description")
-    @patch("src.providers.caldav.journal_service.validate_calendar_name")
-    @patch("src.providers.caldav.journal_service.datetime")
+    @patch("src.providers.caldav_services.journal_service.find_calendar_by_name")
+    @patch("src.providers.caldav_services.journal_service.validate_journal_summary")
+    @patch("src.providers.caldav_services.journal_service.validate_journal_description")
+    @patch("src.providers.caldav_services.journal_service.validate_calendar_name")
+    @patch("src.providers.caldav_services.journal_service.datetime")
     def test_journal_creation_without_date(
         self,
         mock_datetime,
@@ -246,7 +246,7 @@ class TestCalDavJournalServiceCreate:
 class TestCalDavJournalServiceErrorHandling:
     """Tests for error handling in CalDavJournalService.create_journal method."""
 
-    @patch("src.providers.caldav.journal_service.validate_journal_summary")
+    @patch("src.providers.caldav_services.journal_service.validate_journal_summary")
     def test_invalid_summary_raises_validation_error(
         self, mock_validate_summary, journal_service
     ):
@@ -260,8 +260,8 @@ class TestCalDavJournalServiceErrorHandling:
                 calendar_name="Personal", summary="", description="Valid description."
             )
 
-    @patch("src.providers.caldav.journal_service.validate_journal_description")
-    @patch("src.providers.caldav.journal_service.validate_journal_summary")
+    @patch("src.providers.caldav_services.journal_service.validate_journal_description")
+    @patch("src.providers.caldav_services.journal_service.validate_journal_summary")
     def test_invalid_description_raises_validation_error(
         self, mock_validate_summary, mock_validate_description, journal_service
     ):
@@ -277,10 +277,10 @@ class TestCalDavJournalServiceErrorHandling:
                 calendar_name="Personal", summary="Valid summary", description=""
             )
 
-    @patch("src.providers.caldav.journal_service.find_calendar_by_name")
-    @patch("src.providers.caldav.journal_service.validate_journal_summary")
-    @patch("src.providers.caldav.journal_service.validate_journal_description")
-    @patch("src.providers.caldav.journal_service.validate_calendar_name")
+    @patch("src.providers.caldav_services.journal_service.find_calendar_by_name")
+    @patch("src.providers.caldav_services.journal_service.validate_journal_summary")
+    @patch("src.providers.caldav_services.journal_service.validate_journal_description")
+    @patch("src.providers.caldav_services.journal_service.validate_calendar_name")
     def test_invalid_calendar_raises_value_error(
         self,
         mock_validate_calendar,
@@ -301,10 +301,10 @@ class TestCalDavJournalServiceErrorHandling:
                 description="Valid description.",
             )
 
-    @patch("src.providers.caldav.journal_service.find_calendar_by_name")
-    @patch("src.providers.caldav.journal_service.validate_journal_summary")
-    @patch("src.providers.caldav.journal_service.validate_journal_description")
-    @patch("src.providers.caldav.journal_service.validate_calendar_name")
+    @patch("src.providers.caldav_services.journal_service.find_calendar_by_name")
+    @patch("src.providers.caldav_services.journal_service.validate_journal_summary")
+    @patch("src.providers.caldav_services.journal_service.validate_journal_description")
+    @patch("src.providers.caldav_services.journal_service.validate_calendar_name")
     def test_invalid_date_format_raises_value_error(
         self,
         mock_validate_calendar,
@@ -327,10 +327,10 @@ class TestCalDavJournalServiceErrorHandling:
                 date="invalid-date-format",
             )
 
-    @patch("src.providers.caldav.journal_service.find_calendar_by_name")
-    @patch("src.providers.caldav.journal_service.validate_journal_summary")
-    @patch("src.providers.caldav.journal_service.validate_journal_description")
-    @patch("src.providers.caldav.journal_service.validate_calendar_name")
+    @patch("src.providers.caldav_services.journal_service.find_calendar_by_name")
+    @patch("src.providers.caldav_services.journal_service.validate_journal_summary")
+    @patch("src.providers.caldav_services.journal_service.validate_journal_description")
+    @patch("src.providers.caldav_services.journal_service.validate_calendar_name")
     def test_caldav_error_raises_runtime_error(
         self,
         mock_validate_calendar,
@@ -368,10 +368,10 @@ class TestCalDavJournalServiceIntegration:
         # Verify calendars property delegates to base
         assert service.calendars is mock_caldav_base.calendars
 
-    @patch("src.providers.caldav.journal_service.find_calendar_by_name")
-    @patch("src.providers.caldav.journal_service.validate_journal_summary")
-    @patch("src.providers.caldav.journal_service.validate_journal_description")
-    @patch("src.providers.caldav.journal_service.validate_calendar_name")
+    @patch("src.providers.caldav_services.journal_service.find_calendar_by_name")
+    @patch("src.providers.caldav_services.journal_service.validate_journal_summary")
+    @patch("src.providers.caldav_services.journal_service.validate_journal_description")
+    @patch("src.providers.caldav_services.journal_service.validate_calendar_name")
     def test_calendar_cache_integration(
         self,
         mock_validate_calendar,
@@ -402,11 +402,11 @@ class TestCalDavJournalServiceIntegration:
         """Test handling of special characters in journal content."""
         with (
             patch(
-                "src.providers.caldav.journal_service.find_calendar_by_name"
+                "src.providers.caldav_services.journal_service.find_calendar_by_name"
             ) as mock_find,
-            patch("src.providers.caldav.journal_service.validate_journal_summary"),
-            patch("src.providers.caldav.journal_service.validate_journal_description"),
-            patch("src.providers.caldav.journal_service.validate_calendar_name"),
+            patch("src.providers.caldav_services.journal_service.validate_journal_summary"),
+            patch("src.providers.caldav_services.journal_service.validate_journal_description"),
+            patch("src.providers.caldav_services.journal_service.validate_calendar_name"),
         ):
             mock_find.return_value = mock_calendar_found
 
