@@ -10,6 +10,8 @@ from src.utils.date_utils import (
     parse_date_range,
     parse_instance_date,
     validate_date_string,
+    calculate_past_days_range,
+    calculate_future_days_range,
 )
 
 
@@ -274,3 +276,242 @@ class TestDateUtilsIntegration:
         # Test that invalid ordering is rejected
         with pytest.raises(ValueError, match="cannot be before"):
             parse_date_range("2025-07-15", "2025-07-12")
+
+
+class TestCalculatePastDaysRange:
+    """Tests for calculate_past_days_range function."""
+
+    def test_calculate_past_1_day(self):
+        """Test calculating range for past 1 day (today only)."""
+        start_date, end_date = calculate_past_days_range(1)
+        
+        assert isinstance(start_date, date)
+        assert isinstance(end_date, date)
+        assert start_date == end_date  # Should be today only
+        
+        # Should be today's date
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        today = datetime.now(ZoneInfo("UTC")).date()
+        assert end_date == today
+        assert start_date == today
+
+    def test_calculate_past_7_days(self):
+        """Test calculating range for past 7 days."""
+        start_date, end_date = calculate_past_days_range(7)
+        
+        # End date should be today
+        from datetime import datetime, timedelta
+        from zoneinfo import ZoneInfo
+        today = datetime.now(ZoneInfo("UTC")).date()
+        assert end_date == today
+        
+        # Start date should be 6 days ago (7 days including today)
+        expected_start = today - timedelta(days=6)
+        assert start_date == expected_start
+        
+        # Should span exactly 7 days
+        assert (end_date - start_date).days == 6  # 0-indexed, so 6 days difference = 7 days total
+
+    def test_calculate_past_30_days(self):
+        """Test calculating range for past 30 days."""
+        start_date, end_date = calculate_past_days_range(30)
+        
+        from datetime import datetime, timedelta
+        from zoneinfo import ZoneInfo
+        today = datetime.now(ZoneInfo("UTC")).date()
+        expected_start = today - timedelta(days=29)  # 30 days including today
+        
+        assert end_date == today
+        assert start_date == expected_start
+        assert (end_date - start_date).days == 29  # 30 days total
+
+    @pytest.mark.parametrize(
+        "invalid_days",
+        [
+            0,
+            -1,
+            -10,
+            "not_an_int",
+            1.5,
+            None,
+        ],
+    )
+    def test_calculate_past_days_invalid_input(self, invalid_days):
+        """Test that invalid input raises ValueError."""
+        with pytest.raises(ValueError, match="Days must be a positive integer"):
+            calculate_past_days_range(invalid_days)
+
+    def test_calculate_past_days_large_number(self):
+        """Test calculating range for a large number of days."""
+        start_date, end_date = calculate_past_days_range(365)
+        
+        from datetime import datetime, timedelta
+        from zoneinfo import ZoneInfo
+        today = datetime.now(ZoneInfo("UTC")).date()
+        expected_start = today - timedelta(days=364)  # 365 days including today
+        
+        assert end_date == today
+        assert start_date == expected_start
+        assert (end_date - start_date).days == 364  # 365 days total
+
+
+class TestCalculateFutureDaysRange:
+    """Tests for calculate_future_days_range function."""
+
+    def test_calculate_future_1_day(self):
+        """Test calculating range for future 1 day (today only)."""
+        start_date, end_date = calculate_future_days_range(1)
+        
+        assert isinstance(start_date, date)
+        assert isinstance(end_date, date)
+        assert start_date == end_date  # Should be today only
+        
+        # Should be today's date
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        today = datetime.now(ZoneInfo("UTC")).date()
+        assert start_date == today
+        assert end_date == today
+
+    def test_calculate_future_7_days(self):
+        """Test calculating range for future 7 days."""
+        start_date, end_date = calculate_future_days_range(7)
+        
+        # Start date should be today
+        from datetime import datetime, timedelta
+        from zoneinfo import ZoneInfo
+        today = datetime.now(ZoneInfo("UTC")).date()
+        assert start_date == today
+        
+        # End date should be 6 days from now (7 days including today)
+        expected_end = today + timedelta(days=6)
+        assert end_date == expected_end
+        
+        # Should span exactly 7 days
+        assert (end_date - start_date).days == 6  # 0-indexed, so 6 days difference = 7 days total
+
+    def test_calculate_future_30_days(self):
+        """Test calculating range for future 30 days."""
+        start_date, end_date = calculate_future_days_range(30)
+        
+        from datetime import datetime, timedelta
+        from zoneinfo import ZoneInfo
+        today = datetime.now(ZoneInfo("UTC")).date()
+        expected_end = today + timedelta(days=29)  # 30 days including today
+        
+        assert start_date == today
+        assert end_date == expected_end
+        assert (end_date - start_date).days == 29  # 30 days total
+
+    @pytest.mark.parametrize(
+        "invalid_days",
+        [
+            0,
+            -1,
+            -10,
+            "not_an_int",
+            1.5,
+            None,
+        ],
+    )
+    def test_calculate_future_days_invalid_input(self, invalid_days):
+        """Test that invalid input raises ValueError."""
+        with pytest.raises(ValueError, match="Days must be a positive integer"):
+            calculate_future_days_range(invalid_days)
+
+    def test_calculate_future_days_large_number(self):
+        """Test calculating range for a large number of days."""
+        start_date, end_date = calculate_future_days_range(365)
+        
+        from datetime import datetime, timedelta
+        from zoneinfo import ZoneInfo
+        today = datetime.now(ZoneInfo("UTC")).date()
+        expected_end = today + timedelta(days=364)  # 365 days including today
+        
+        assert start_date == today
+        assert end_date == expected_end
+        assert (end_date - start_date).days == 364  # 365 days total
+
+    def test_future_range_is_opposite_of_past_range(self):
+        """Test that future and past ranges are logical opposites."""
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        today = datetime.now(ZoneInfo("UTC")).date()
+        
+        # Get past 7 days and future 7 days
+        past_start, past_end = calculate_past_days_range(7)
+        future_start, future_end = calculate_future_days_range(7)
+        
+        # Both should include today
+        assert past_end == today
+        assert future_start == today
+        
+        # Past start should be 6 days before today
+        # Future end should be 6 days after today
+        assert (today - past_start).days == 6
+        assert (future_end - today).days == 6
+
+
+class TestDateRangeFunctionsIntegration:
+    """Integration tests for date range functions working together."""
+
+    def test_ranges_include_today_correctly(self):
+        """Test that both past and future ranges include today as documented."""
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        today = datetime.now(ZoneInfo("UTC")).date()
+        
+        # Test 1 day ranges (should be today only)
+        past_start, past_end = calculate_past_days_range(1)
+        future_start, future_end = calculate_future_days_range(1)
+        
+        assert past_start == today
+        assert past_end == today
+        assert future_start == today
+        assert future_end == today
+
+    def test_ranges_span_correct_duration(self):
+        """Test that ranges span the expected number of days."""
+        test_days = [1, 3, 7, 14, 30]
+        
+        for days in test_days:
+            past_start, past_end = calculate_past_days_range(days)
+            future_start, future_end = calculate_future_days_range(days)
+            
+            # Each range should span exactly the requested number of days
+            past_span = (past_end - past_start).days + 1  # +1 because it's inclusive
+            future_span = (future_end - future_start).days + 1
+            
+            assert past_span == days, f"Past range for {days} days spans {past_span} days"
+            assert future_span == days, f"Future range for {days} days spans {future_span} days"
+
+    def test_symmetric_ranges_around_today(self):
+        """Test that past and future ranges are symmetric around today."""
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        today = datetime.now(ZoneInfo("UTC")).date()
+        
+        test_days = [7, 14, 30]
+        
+        for days in test_days:
+            past_start, past_end = calculate_past_days_range(days)
+            future_start, future_end = calculate_future_days_range(days)
+            
+            # Distance from today should be equal
+            past_distance = (today - past_start).days
+            future_distance = (future_end - today).days
+            
+            assert past_distance == future_distance, f"Ranges for {days} days are not symmetric around today"
+
+    def test_error_handling_consistency(self):
+        """Test that both functions handle errors consistently."""
+        invalid_inputs = [0, -1, "invalid", 1.5, None]
+        
+        for invalid_input in invalid_inputs:
+            # Both functions should raise the same type of error
+            with pytest.raises(ValueError, match="Days must be a positive integer"):
+                calculate_past_days_range(invalid_input)
+            
+            with pytest.raises(ValueError, match="Days must be a positive integer"):
+                calculate_future_days_range(invalid_input)

@@ -1,6 +1,6 @@
-from src.core.models import Task, TaskDelete, TaskMove, TaskStatusChange
+from src.core.models import Task, TaskQuery, TaskDelete, TaskMove, TaskStatusChange
 from src.providers.task_provider import TaskProvider
-from src.utils.date_utils import parse_due_date, calculate_past_days_range
+from src.utils.date_utils import parse_due_date, calculate_past_days_range, calculate_future_days_range
 from src.utils.entity_finder_utils import find_calendar_by_name, find_task_by_summary
 from src.utils.validation_utils import validate_task_summary, validate_calendar_name
 from .base import CalDavBase
@@ -18,52 +18,43 @@ class CalDavTaskService(TaskProvider):
         """Access shared calendars from base instance."""
         return self.caldav_base.calendars
 
-    def get_tasks(
-        self,
-        include_completed: bool = False,
-        calendar_name: str | None = None,
-        past_days: int | None = None,
-    ) -> list[Task]:
-        """Get tasks from calendars, optionally filtered by calendar name and/or past days.
+    def get_tasks(self, query: TaskQuery) -> list[Task]:
+        """Get tasks from calendars, optionally filtered by query parameters.
 
         Args:
-            include_completed (bool): Whether to include completed tasks
-            calendar_name (str | None): Filter tasks by specific calendar name, or None for all calendars
-            past_days (int | None): Filter by tasks due in past X days including today, or None for all tasks
+            query (TaskQuery): Query parameters including filters for completion status, calendar, and date range
 
         Returns:
             list[Task]: list of Task objects from specified calendar(s)
 
         Raises:
-            ValueError: If specified calendar not found or invalid past_days value
+            ValueError: If specified calendar not found or invalid query parameters
             RuntimeError: If unable to fetch tasks
         """
         tasks = []
         try:
-            # Parse past_days filter if provided
+            # Parse date filter if provided
             date_range_start = None
             date_range_end = None
-            if past_days:
-                if not isinstance(past_days, int) or past_days < 1:
-                    raise ValueError(
-                        f"past_days must be a positive integer, got: {past_days}"
-                    )
-                date_range_start, date_range_end = calculate_past_days_range(past_days)
+            if query.past_days is not None:
+                date_range_start, date_range_end = calculate_past_days_range(query.past_days)
+            elif query.future_days is not None:
+                date_range_start, date_range_end = calculate_future_days_range(query.future_days)
 
             calendars_to_search = self.calendars
 
             # Filter to specific calendar if requested
-            if calendar_name:
-                target_calendar = find_calendar_by_name(self.calendars, calendar_name)
+            if query.calendar_name:
+                target_calendar = find_calendar_by_name(self.calendars, query.calendar_name)
                 calendars_to_search = [target_calendar]
 
             for cal in calendars_to_search:
                 try:
                     cal_name = str(cal.name)
-                    for todo in cal.todos(include_completed=include_completed):
+                    for todo in cal.todos(include_completed=query.include_completed):
                         task = Task.from_todo(todo, cal_name)
 
-                        # Apply past_days filter if specified
+                        # Apply date filter if specified
                         if date_range_start and date_range_end:
                             # Include tasks without due dates (they're timeless/still relevant)
                             if task.due_on is None:

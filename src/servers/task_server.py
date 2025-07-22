@@ -18,6 +18,7 @@ from mcp.server.fastmcp import FastMCP
 
 from src.core.models import (
     Task,
+    TaskQuery,
     TaskCreate,
     TaskUpdate,
     TaskComplete,
@@ -38,8 +39,9 @@ def get_tasks(
     include_completed: bool = False,
     calendar_name: str | None = None,
     past_days: int | None = None,
+    future_days: int | None = None,
 ) -> list[Task]:
-    """Get tasks from calendars, optionally filtered by calendar name and/or past days.
+    """Get tasks from calendars, optionally filtered by calendar name and/or date range.
 
     Args:
         include_completed (bool): Whether to include completed tasks. Defaults to False.
@@ -47,6 +49,8 @@ def get_tasks(
         past_days (int | None): Filter by tasks due in past X days including today, or None for all tasks.
                                🔥 AUTOMATIC DEFAULT: When include_completed=True and past_days=None,
                                this automatically defaults to 7 days to prevent overwhelming results.
+        future_days (int | None): Filter by tasks due in future X days including today, or None for all tasks.
+                                 Cannot be used together with past_days.
 
     Returns:
         list[Task]: List of Task objects from specified calendar(s)
@@ -57,14 +61,18 @@ def get_tasks(
         get_tasks(include_completed=True)  # 🔥 AUTO-LIMITED: Completed tasks from past 7 days only
         get_tasks(include_completed=True, past_days=30)  # Override: All tasks from past 30 days
         get_tasks(past_days=7)  # Tasks due in past 7 days from all calendars
+        get_tasks(future_days=7)  # Tasks due in next 7 days from all calendars
         get_tasks(calendar_name="Work", past_days=14)  # Work tasks due in past 14 days
+        get_tasks(calendar_name="Work", future_days=14)  # Work tasks due in next 14 days
         get_tasks(include_completed=True, calendar_name="Personal")  # 🔥 AUTO-LIMITED: Personal completed tasks from past 7 days
 
     Use cases:
         - **Recent task review**: Get past 7 days of tasks for weekly review
+        - **Upcoming task planning**: Get future 7 days of tasks for upcoming work planning
         - **Completed task analysis**: Use include_completed=True for recent productivity analysis (auto-limited to 7 days)
         - **Overdue task check**: Get past 1-3 days to find recently overdue tasks
-        - **Calendar-specific focus**: Combine calendar_name with past_days for targeted reviews
+        - **Short-term planning**: Get future 1-3 days to plan immediate work
+        - **Calendar-specific focus**: Combine calendar_name with past_days/future_days for targeted reviews
         - **Avoid overwhelming results**: Completed tasks are auto-limited to 7 days unless past_days is specified
 
     💡 Client Implementation Suggestion:
@@ -77,14 +85,18 @@ def get_tasks(
         as they are considered "timeless" and still relevant.
     """
     # Apply default past_days when include_completed=True to avoid overwhelming results
-    if include_completed and past_days is None:
+    if include_completed and past_days is None and future_days is None:
         past_days = 7  # Default to past 7 days for completed tasks
 
-    return task_provider.get_tasks(
+    # Create TaskQuery object from parameters
+    query = TaskQuery(
         include_completed=include_completed,
         calendar_name=calendar_name,
         past_days=past_days,
+        future_days=future_days,
     )
+
+    return task_provider.get_tasks(query)
 
 
 @task_mcp.tool("add_task")

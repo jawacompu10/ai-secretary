@@ -1,6 +1,6 @@
 from datetime import date
 from caldav import Todo
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Literal
 
 from src.utils.icalendar_utils import parse_caldav_component, normalize_caldav_summary
@@ -65,11 +65,42 @@ class TaskStatusChange(BaseModel):
     )
 
 
+class TaskQuery(BaseModel):
+    """Model for querying tasks with various filters."""
+    
+    include_completed: bool = Field(
+        default=False, description="Whether to include completed tasks"
+    )
+    calendar_name: str | None = Field(
+        default=None, description="Filter tasks by specific calendar name, or None for all calendars"
+    )
+    past_days: int | None = Field(
+        default=None, description="Filter by tasks due in past X days including today, or None for all tasks"
+    )
+    future_days: int | None = Field(
+        default=None, description="Filter by tasks due in future X days including today, or None for all tasks"
+    )
+
+    @field_validator('past_days', 'future_days')
+    @classmethod
+    def validate_positive_days(cls, v):
+        """Validate that days values are positive integers when provided."""
+        if v is not None and (not isinstance(v, int) or v < 1):
+            raise ValueError("Days must be a positive integer")
+        return v
+
+    @model_validator(mode='after')
+    def validate_mutually_exclusive_days(self):
+        """Validate that past_days and future_days are not both specified."""
+        if self.past_days is not None and self.future_days is not None:
+            raise ValueError("Cannot specify both past_days and future_days filters")
+        return self
+
+
 class Task(BaseModel):
     """Task model representing a calendar task/todo."""
 
-    name: str  # Keep for backward compatibility, maps to summary
-    summary: str | None = Field(default=None)  # VCALENDAR SUMMARY
+    summary: str = Field(..., description="Task title/summary")  # VCALENDAR SUMMARY
     description: str | None = Field(default=None)  # VCALENDAR DESCRIPTION
     calendar_name: str = Field(
         ..., description="Name of the calendar containing this task"
@@ -86,7 +117,6 @@ class Task(BaseModel):
         summary = normalize_caldav_summary(raw_summary)
 
         return cls(
-            name=summary,  # For backward compatibility
             summary=summary,
             description=props.get("DESCRIPTION"),
             calendar_name=calendar_name,

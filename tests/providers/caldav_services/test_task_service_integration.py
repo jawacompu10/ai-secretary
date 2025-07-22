@@ -5,7 +5,7 @@ Tests against real CalDAV server without mocking to verify icalendar library fix
 
 import pytest
 from src.providers.caldav_provider import create_calendar_provider
-from src.core.models.task import TaskDelete, TaskStatusChange
+from src.core.models.task import TaskDelete, TaskStatusChange, TaskQuery
 
 
 TEST_CALENDAR_NAME = "Calendar For Automated Tests"
@@ -47,7 +47,9 @@ def cleanup_test_tasks(caldav_service):
 
     try:
         # Get all tasks from test calendar
-        tasks = caldav_service.get_tasks(calendar_name=TEST_CALENDAR_NAME, include_completed=True)
+        tasks = caldav_service.get_tasks(
+            query=TaskQuery(calendar_name=TEST_CALENDAR_NAME, include_completed=True)
+        )
 
         # Delete any tasks created during testing
         for task in tasks:
@@ -93,7 +95,9 @@ class TestCalDavTaskServiceIntegrationLineBreaks:
         assert long_summary in result
 
         # Critical test: Retrieve tasks and verify finder functions work
-        tasks = caldav_service.get_tasks(calendar_name=TEST_CALENDAR_NAME)
+        tasks = caldav_service.get_tasks(
+            query=TaskQuery(calendar_name=TEST_CALENDAR_NAME)
+        )
 
         # Find our test task using exact summary matching (this was broken before icalendar fix)
         found_task = None
@@ -128,7 +132,9 @@ class TestCalDavTaskServiceIntegrationLineBreaks:
         assert "Task created" in result
 
         # Retrieve and verify exact matching works
-        tasks = caldav_service.get_tasks(calendar_name=TEST_CALENDAR_NAME)
+        tasks = caldav_service.get_tasks(
+            query=TaskQuery(calendar_name=TEST_CALENDAR_NAME)
+        )
         found_task = None
         for task in tasks:
             if task.summary == special_summary:
@@ -173,7 +179,9 @@ class TestCalDavTaskServiceIntegrationLineBreaks:
             assert "Task created" in result
 
         # Retrieve all tasks
-        tasks = caldav_service.get_tasks(calendar_name=TEST_CALENDAR_NAME)
+        tasks = caldav_service.get_tasks(
+            query=TaskQuery(calendar_name=TEST_CALENDAR_NAME)
+        )
 
         # Verify each task can be found by exact summary match
         for expected_summary in tasks_to_create:
@@ -269,7 +277,9 @@ class TestCalDavTaskServiceIntegrationLineBreaks:
             assert "status changed to 'IN-PROCESS'" in change_result
             
             # Verify the status change by retrieving tasks
-            tasks = caldav_service.get_tasks(calendar_name=TEST_CALENDAR_NAME)
+            tasks = caldav_service.get_tasks(
+                query=TaskQuery(calendar_name=TEST_CALENDAR_NAME)
+            )
             found_task = None
             for task in tasks:
                 if task.summary == long_summary:
@@ -297,7 +307,9 @@ class TestCalDavTaskServiceIntegrationLineBreaks:
             assert "status changed to 'COMPLETED'" in change_result
             
             # Verify the status change by retrieving tasks (including completed ones)
-            tasks = caldav_service.get_tasks(calendar_name=TEST_CALENDAR_NAME, include_completed=True)
+            tasks = caldav_service.get_tasks(
+                query=TaskQuery(calendar_name=TEST_CALENDAR_NAME, include_completed=True)
+            )
             found_task = None
             for task in tasks:
                 if task.summary == long_summary:
@@ -326,7 +338,9 @@ class TestCalDavTaskServiceIntegrationLineBreaks:
             assert "status changed to 'NEEDS-ACTION'" in change_result
             
             # Verify the status change by retrieving tasks
-            tasks = caldav_service.get_tasks(calendar_name=TEST_CALENDAR_NAME, include_completed=True)
+            tasks = caldav_service.get_tasks(
+                query=TaskQuery(calendar_name=TEST_CALENDAR_NAME, include_completed=True)
+            )
             found_task = None
             for task in tasks:
                 if task.summary == long_summary:
@@ -342,3 +356,290 @@ class TestCalDavTaskServiceIntegrationLineBreaks:
                 pytest.fail(f"Status change to NEEDS-ACTION failed because finder function couldn't locate task: {e}")
             else:
                 raise
+
+
+class TestCalDavTaskServiceIntegrationFutureDays:
+    """Integration tests for get_tasks with future_days parameter."""
+
+    def test_get_tasks_future_days_filtering(self, caldav_service):
+        """Test that future_days parameter correctly filters tasks."""
+        from datetime import date, timedelta
+        
+        # Create tasks with different due dates
+        today = date.today()
+        
+        tasks_to_create = [
+            {
+                "summary": "Test Integration Task - Future 2 days",
+                "due_date": (today + timedelta(days=2)).isoformat(),
+                "description": "Task due in 2 days"
+            },
+            {
+                "summary": "Test Integration Task - Future 5 days", 
+                "due_date": (today + timedelta(days=5)).isoformat(),
+                "description": "Task due in 5 days"
+            },
+            {
+                "summary": "Test Integration Task - Future 10 days",
+                "due_date": (today + timedelta(days=10)).isoformat(), 
+                "description": "Task due in 10 days"
+            },
+            {
+                "summary": "Test Integration Task - Past 2 days",
+                "due_date": (today - timedelta(days=2)).isoformat(),
+                "description": "Task due 2 days ago"
+            },
+            {
+                "summary": "Test Integration Task - No due date",
+                "due_date": None,
+                "description": "Task without due date"
+            }
+        ]
+        
+        # Create all test tasks
+        for task_data in tasks_to_create:
+            result = caldav_service.add_task(
+                summary=task_data["summary"],
+                calendar_name=TEST_CALENDAR_NAME,
+                due_date=task_data["due_date"],
+                description=task_data["description"]
+            )
+            assert "Task created" in result
+
+        # Test future_days=7 (should include tasks due in 2 and 5 days, plus no due date task)
+        tasks_future_7 = caldav_service.get_tasks(
+            query=TaskQuery(calendar_name=TEST_CALENDAR_NAME, future_days=7)
+        )
+        
+        future_7_summaries = {task.summary for task in tasks_future_7 if task.summary.startswith("Test Integration Task")}
+        expected_future_7 = {
+            "Test Integration Task - Future 2 days",
+            "Test Integration Task - Future 5 days", 
+            "Test Integration Task - No due date"
+        }
+        assert expected_future_7.issubset(future_7_summaries), f"Expected {expected_future_7}, got {future_7_summaries}"
+
+        # Test future_days=3 (should include only task due in 2 days, plus no due date task)
+        tasks_future_3 = caldav_service.get_tasks(
+            query=TaskQuery(calendar_name=TEST_CALENDAR_NAME, future_days=3)
+        )
+        
+        future_3_summaries = {task.summary for task in tasks_future_3 if task.summary.startswith("Test Integration Task")}
+        expected_future_3 = {
+            "Test Integration Task - Future 2 days",
+            "Test Integration Task - No due date"
+        }
+        assert expected_future_3.issubset(future_3_summaries), f"Expected {expected_future_3}, got {future_3_summaries}"
+        
+        # Verify exclusions for future_days=3
+        excluded_from_future_3 = {
+            "Test Integration Task - Future 5 days",
+            "Test Integration Task - Future 10 days",
+            "Test Integration Task - Past 2 days"
+        }
+        assert excluded_from_future_3.isdisjoint(future_3_summaries), f"Should not include {excluded_from_future_3 & future_3_summaries}"
+
+        # Test future_days=15 (should include all future tasks and no due date task)
+        tasks_future_15 = caldav_service.get_tasks(
+            query=TaskQuery(calendar_name=TEST_CALENDAR_NAME, future_days=15)
+        )
+        
+        future_15_summaries = {task.summary for task in tasks_future_15 if task.summary.startswith("Test Integration Task")}
+        expected_future_15 = {
+            "Test Integration Task - Future 2 days",
+            "Test Integration Task - Future 5 days",
+            "Test Integration Task - Future 10 days",
+            "Test Integration Task - No due date"
+        }
+        assert expected_future_15.issubset(future_15_summaries), f"Expected {expected_future_15}, got {future_15_summaries}"
+        
+        # Should still exclude past tasks
+        assert "Test Integration Task - Past 2 days" not in future_15_summaries
+
+    def test_get_tasks_future_days_validation(self, caldav_service):
+        """Test that future_days parameter validation works correctly."""
+        # Test that both past_days and future_days cannot be specified
+        with pytest.raises(ValueError, match="Cannot specify both past_days and future_days filters"):
+            TaskQuery(
+                calendar_name=TEST_CALENDAR_NAME,
+                past_days=7,
+                future_days=7
+            )
+
+        # Test that invalid future_days values raise errors
+        invalid_values = [0, -1, -10]
+        for invalid_value in invalid_values:
+            with pytest.raises(ValueError, match="Days must be a positive integer"):
+                TaskQuery(
+                    calendar_name=TEST_CALENDAR_NAME,
+                    future_days=invalid_value
+                )
+
+    def test_get_tasks_future_days_with_completed_tasks(self, caldav_service):
+        """Test future_days filtering with completed tasks."""
+        from datetime import date, timedelta
+        
+        today = date.today()
+        
+        # Create a future task and complete it
+        future_task_summary = "Test Integration Task - Future Completed"
+        
+        # Create the task
+        result = caldav_service.add_task(
+            summary=future_task_summary,
+            calendar_name=TEST_CALENDAR_NAME,
+            due_date=(today + timedelta(days=3)).isoformat(),
+            description="Future task to be completed"
+        )
+        assert "Task created" in result
+        
+        # Complete the task
+        complete_result = caldav_service.complete_task(
+            summary=future_task_summary,
+            calendar_name=TEST_CALENDAR_NAME
+        )
+        assert "completed" in complete_result.lower()
+
+        # Test that future_days includes completed tasks when include_completed=True
+        tasks_with_completed = caldav_service.get_tasks(
+            query=TaskQuery(
+                calendar_name=TEST_CALENDAR_NAME,
+                future_days=7,
+                include_completed=True
+            )
+        )
+        
+        completed_summaries = {task.summary for task in tasks_with_completed 
+                             if task.summary == future_task_summary}
+        assert future_task_summary in completed_summaries
+
+        # Test that future_days excludes completed tasks when include_completed=False (default)
+        tasks_without_completed = caldav_service.get_tasks(
+            query=TaskQuery(
+                calendar_name=TEST_CALENDAR_NAME,
+                future_days=7,
+                include_completed=False
+            )
+        )
+        
+        non_completed_summaries = {task.summary for task in tasks_without_completed}
+        assert future_task_summary not in non_completed_summaries
+
+    def test_get_tasks_future_days_edge_cases(self, caldav_service):
+        """Test edge cases for future_days filtering."""
+        from datetime import date, timedelta
+        
+        today = date.today()
+        
+        # Create task due today
+        today_task_summary = "Test Integration Task - Due Today"
+        result = caldav_service.add_task(
+            summary=today_task_summary,
+            calendar_name=TEST_CALENDAR_NAME,
+            due_date=today.isoformat(),
+            description="Task due today"
+        )
+        assert "Task created" in result
+
+        # Test future_days=1 should include today's task
+        tasks_future_1 = caldav_service.get_tasks(
+            query=TaskQuery(calendar_name=TEST_CALENDAR_NAME, future_days=1)
+        )
+        
+        future_1_summaries = {task.summary for task in tasks_future_1}
+        assert today_task_summary in future_1_summaries
+
+        # Create task due tomorrow
+        tomorrow_task_summary = "Test Integration Task - Due Tomorrow"
+        result = caldav_service.add_task(
+            summary=tomorrow_task_summary,
+            calendar_name=TEST_CALENDAR_NAME,
+            due_date=(today + timedelta(days=1)).isoformat(),
+            description="Task due tomorrow"
+        )
+        assert "Task created" in result
+
+        # Test future_days=1 should NOT include tomorrow's task
+        tasks_future_1_again = caldav_service.get_tasks(
+            query=TaskQuery(calendar_name=TEST_CALENDAR_NAME, future_days=1)
+        )
+        
+        future_1_summaries_again = {task.summary for task in tasks_future_1_again}
+        assert today_task_summary in future_1_summaries_again
+        assert tomorrow_task_summary not in future_1_summaries_again
+
+        # Test future_days=2 should include both today and tomorrow
+        tasks_future_2 = caldav_service.get_tasks(
+            query=TaskQuery(calendar_name=TEST_CALENDAR_NAME, future_days=2)
+        )
+        
+        future_2_summaries = {task.summary for task in tasks_future_2}
+        assert today_task_summary in future_2_summaries
+        assert tomorrow_task_summary in future_2_summaries
+
+    def test_get_tasks_future_days_comparison_with_past_days(self, caldav_service):
+        """Test that future_days and past_days work as expected opposites."""
+        from datetime import date, timedelta
+        
+        today = date.today()
+        
+        # Create tasks in past, present, and future
+        test_tasks = [
+            {
+                "summary": "Test Integration Task - Compare Past",
+                "due_date": (today - timedelta(days=3)).isoformat(),
+                "description": "Task for comparison"
+            },
+            {
+                "summary": "Test Integration Task - Compare Present", 
+                "due_date": today.isoformat(),
+                "description": "Task for comparison"
+            },
+            {
+                "summary": "Test Integration Task - Compare Future",
+                "due_date": (today + timedelta(days=3)).isoformat(),
+                "description": "Task for comparison"
+            }
+        ]
+        
+        # Create all test tasks
+        for task_data in test_tasks:
+            result = caldav_service.add_task(
+                summary=task_data["summary"],
+                calendar_name=TEST_CALENDAR_NAME,
+                due_date=task_data["due_date"],
+                description=task_data["description"]
+            )
+            assert "Task created" in result
+
+        # Get past 7 days
+        tasks_past = caldav_service.get_tasks(
+            query=TaskQuery(calendar_name=TEST_CALENDAR_NAME, past_days=7)
+        )
+        past_summaries = {task.summary for task in tasks_past if "Compare" in task.summary}
+
+        # Get future 7 days  
+        tasks_future = caldav_service.get_tasks(
+            query=TaskQuery(calendar_name=TEST_CALENDAR_NAME, future_days=7)
+        )
+        future_summaries = {task.summary for task in tasks_future if "Compare" in task.summary}
+
+        # Past should include past and present
+        expected_past = {
+            "Test Integration Task - Compare Past",
+            "Test Integration Task - Compare Present"
+        }
+        assert expected_past.issubset(past_summaries)
+        assert "Test Integration Task - Compare Future" not in past_summaries
+
+        # Future should include present and future
+        expected_future = {
+            "Test Integration Task - Compare Present", 
+            "Test Integration Task - Compare Future"
+        }
+        assert expected_future.issubset(future_summaries)
+        assert "Test Integration Task - Compare Past" not in future_summaries
+
+        # Both should include present task (today)
+        assert "Test Integration Task - Compare Present" in past_summaries
+        assert "Test Integration Task - Compare Present" in future_summaries

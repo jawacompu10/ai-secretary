@@ -1,5 +1,6 @@
 from src.core.models import (
     Task,
+    TaskQuery,
     TaskDelete,
     TaskMove,
     TaskStatusChange,
@@ -58,12 +59,34 @@ class CalDavService(CalendarProvider, TaskProvider, EventProvider, JournalProvid
     # Task Provider methods - delegate to task service
     def get_tasks(
         self,
+        query: TaskQuery | None = None,
+        *,
         include_completed: bool = False,
         calendar_name: str | None = None,
         past_days: int | None = None,
+        future_days: int | None = None,
     ) -> list[Task]:
-        """Get tasks from calendars, optionally filtered by calendar name and/or past days."""
-        return self._task_service.get_tasks(include_completed, calendar_name, past_days)
+        """Get tasks from calendars, optionally filtered by query parameters.
+        
+        Args:
+            query: TaskQuery object with filter parameters (preferred)
+            include_completed: Whether to include completed tasks (legacy)
+            calendar_name: Filter by calendar name (legacy)  
+            past_days: Filter by past days (legacy)
+            future_days: Filter by future days (legacy)
+        """
+        # If query is provided, use it directly
+        if query is not None:
+            return self._task_service.get_tasks(query)
+        
+        # Otherwise, create query from individual parameters (backward compatibility)
+        query = TaskQuery(
+            include_completed=include_completed,
+            calendar_name=calendar_name,
+            past_days=past_days,
+            future_days=future_days,
+        )
+        return self._task_service.get_tasks(query)
 
     def add_task(
         self,

@@ -8,6 +8,7 @@ creation, update, and deletion operations.
 # Task models
 from .task import (
     Task,
+    TaskQuery,
     TaskCreate,
     TaskUpdate,
     TaskComplete,
@@ -32,6 +33,7 @@ from .journal import Journal
 __all__ = [
     # Task models
     "Task",
+    "TaskQuery",
     "TaskCreate",
     "TaskUpdate",
     "TaskComplete",

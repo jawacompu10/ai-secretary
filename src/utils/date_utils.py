@@ -131,3 +131,38 @@ def calculate_past_days_range(days: int) -> tuple[date, date]:
     start_date = today - timedelta(days=days - 1)  # -1 because we include today
 
     return start_date, today
+
+
+def calculate_future_days_range(days: int) -> tuple[date, date]:
+    """Calculate date range for the future X days including today.
+
+    Args:
+        days (int): Number of days to go forward (must be positive)
+
+    Returns:
+        tuple[date, date]: (start_date, end_date) where:
+            - start_date: today
+            - end_date: X days from today
+
+    Raises:
+        ValueError: If days is not a positive integer
+
+    Examples:
+        # Future 7 days (including today)
+        start_date, end_date = calculate_future_days_range(7)
+        # If today is 2025-07-15, returns (2025-07-15, 2025-07-21)
+
+        # Future 1 day (today only)
+        start_date, end_date = calculate_future_days_range(1)
+        # If today is 2025-07-15, returns (2025-07-15, 2025-07-15)
+    """
+    if not isinstance(days, int) or days < 1:
+        raise ValueError(f"Days must be a positive integer, got: {days}")
+
+    # Get today's date in UTC
+    today = datetime.now(ZoneInfo("UTC")).date()
+
+    # Calculate end date (X days from today)
+    end_date = today + timedelta(days=days - 1)  # -1 because we include today
+
+    return today, end_date
