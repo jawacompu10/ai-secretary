@@ -1,6 +1,5 @@
 # Personal Secretary Configuration
 
-[default]
 user_name = "Jawahar"
 # Calendar settings
 calendar_url = "http://localhost:5232"
@@ -18,13 +17,3 @@ debug = false
 # Task settings
 default_task_duration = 30  # minutes
 max_tasks_per_day = 20
-
-[development]
-debug = true
-check_interval = 60  # 1 minute for faster testing
-model_name = "gpt-4o-mini"
-
-[production]
-debug = false
-check_interval = 300  # 5 minutes
-model_name = "gpt-4o"

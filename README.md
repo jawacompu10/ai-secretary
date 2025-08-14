@@ -14,6 +14,51 @@ This project serves as a personal secretary with the following core objectives:
 
 ## 🏗️ Architecture
 
+```mermaid
+graph TD
+    User([User]) --> CommAgent[Communication Agent]
+    
+    CommAgent --> ConsolidationAgent[Consolidation Agent]
+    CommAgent -.-> Preferences[(Preferences)]
+    ConsolidationAgent -.-> Preferences
+    
+    ConsolidationAgent --> TasksAgent[Tasks Agent]
+    ConsolidationAgent --> CalendarAgent[Calendar Agent]
+    ConsolidationAgent --> JournalAgent[Journal Agent]
+    
+    TasksAgent <--> |MCP| TasksServer[(Tasks Server)]
+    CalendarAgent <--> |MCP| CalendarServer[(Calendar Server)]
+    JournalAgent <--> |MCP| JournalServer[(Journal Server)]
+    
+    %% MVP Boundary
+    subgraph MVP ["MVP Scope"]
+        CommAgent
+        ConsolidationAgent
+        TasksAgent
+        CalendarAgent
+        JournalAgent
+        TasksServer
+        CalendarServer
+        JournalServer
+        Preferences
+    end
+    
+    %% Future/Proactive Features
+    ConsolidationAgent -.-> |Config| MultiModalSolution[Multi-modal Solution]
+    ConsolidationAgent -.-> |Future| EmailAgent[Email Agent]
+    EmailAgent -.-> |MCP| EmailServer[(Email Server)]
+    
+    %% Styling
+    classDef agent fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef server fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef future fill:#fff3e0,stroke:#e65100,stroke-width:1px,stroke-dasharray: 5 5
+    classDef mvp fill:#e8f5e8,stroke:#2e7d32,stroke-width:3px
+    
+    class CommAgent,ConsolidationAgent,TasksAgent,CalendarAgent,JournalAgent agent
+    class TasksServer,CalendarServer,JournalServer,EmailServer server
+    class EmailAgent,EmailServer,MultiModalSolution future
+```
+
 ### Calendar Integration
 - **Self-hosted Calendar**: Uses Radicale for local calendar management
 - **CalDAV Protocol**: Standard calendar protocol for connecting to calendar services
