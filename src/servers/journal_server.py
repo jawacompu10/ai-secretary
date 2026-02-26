@@ -1,0 +1,287 @@
+"""
+Journal Management MCP Server
+
+This server provides tools for managing journal entries - daily notes, reflections,
+and personal records. Focused on journaling lifecycle: creating, retrieving,
+and organizing personal journal entries across different calendars.
+"""
+
+import sys
+from pathlib import Path
+
+# Add project root to Python path when running directly
+if __name__ == "__main__":
+    root_dir = Path(__file__).parent.parent.parent
+    if str(root_dir) not in sys.path:
+        sys.path.insert(0, str(root_dir))
+
+from mcp.server.fastmcp import FastMCP
+from datetime import datetime, timezone
+
+from src.core.models import Journal
+from src.core.models.journal import JournalDelete
+from src.providers.journal_provider import JournalProvider
+from src.providers.caldav_provider import create_calendar_provider
+from src.utils.timezone_utils import get_user_timezone
+
+# Initialize the journal provider
+journal_provider: JournalProvider = create_calendar_provider()
+
+# Verify the provider supports journal operations
+if not isinstance(journal_provider, JournalProvider):
+    raise RuntimeError(
+        "Calendar provider doesn't support journal operations. Please use a provider that implements JournalProvider."
+    )
+
+journal_mcp = FastMCP("Journal Management")
+
+
+@journal_mcp.tool("create_journal")
+def create_journal(
+    calendar_name: str, summary: str, description: str, date: str | None = None
+) -> str:
+    """Create a new journal entry in the specified calendar.
+
+    Args:
+        calendar_name (str): Name of the calendar to add the journal to
+        summary (str): Journal title/summary
+        description (str): Journal content/description
+        date (str | None): Journal date in ISO format (YYYY-MM-DD) or None for today
+
+    Returns:
+        str: Success message with journal details
+
+    Examples:
+        # Today's journal entry
+        {
+            "calendar_name": "Personal",
+            "summary": "Daily Reflection",
+            "description": "Had a productive day working on the secretary project. Made good progress on the journal functionality."
+        }
+
+        # Journal entry for specific date
+        {
+            "calendar_name": "Personal",
+            "summary": "Weekend Thoughts",
+            "description": "Spent time with family and reflected on work-life balance. Need to prioritize more personal time.",
+            "date": "2025-07-12"
+        }
+
+        # Work journal entry
+        {
+            "calendar_name": "Work",
+            "summary": "Project Retrospective",
+            "description": "Completed the MCP server implementation. Key learnings: better planning reduces debugging time.",
+            "date": "2025-07-11"
+        }
+
+    Use cases:
+        - Daily personal reflections and thoughts
+        - Work project notes and retrospectives
+        - Learning insights and key takeaways
+        - Gratitude journaling and mindfulness notes
+        - Meeting or event reflections
+    """
+    return journal_provider.create_journal(calendar_name, summary, description, date)
+
+
+@journal_mcp.tool("get_current_datetime")
+def get_current_datetime() -> str:
+    """Get the current date and time in the user's timezone.
+
+    Returns:
+        str: Current datetime in ISO format with timezone info
+
+    This utility helps with creating journal entries for the current moment
+    or understanding what 'today' means in the user's context.
+    """
+    user_tz = get_user_timezone()
+    current_time = datetime.now(timezone.utc).astimezone(user_tz)
+    return current_time.isoformat()
+
+
+@journal_mcp.tool("get_journals")
+def get_journals(
+    calendar_name: str | None = None,
+    date: str | None = None,
+    past_days: int | None = None,
+) -> list[Journal]:
+    """Get journal entries, optionally filtered by calendar name, date, or past days.
+
+    Args:
+        calendar_name (str | None): Filter by specific calendar name, or None for all calendars
+        date (str | None): Filter by specific date in ISO format (YYYY-MM-DD), or None for all dates
+        past_days (int | None): Filter by past X days including today, or None for all dates
+
+    Returns:
+        list[Journal]: List of Journal objects matching the criteria
+
+    Examples:
+        # Get all journal entries from all calendars
+        {}
+
+        # Get journal entries from specific calendar
+        {
+            "calendar_name": "Personal"
+        }
+
+        # Get journal entries from specific date
+        {
+            "date": "2025-07-11"
+        }
+
+        # Get journal entries from specific calendar and date
+        {
+            "calendar_name": "Work",
+            "date": "2025-07-11"
+        }
+
+        # Get recent journal entries from past 7 days
+        {
+            "past_days": 7
+        }
+
+        # Get recent journal entries from past 30 days in specific calendar
+        {
+            "calendar_name": "Personal",
+            "past_days": 30
+        }
+
+        # Get today's journal entries only
+        {
+            "past_days": 1
+        }
+
+    Use cases:
+        - **Review recent reflections**: Get past 7 days of journal entries for quick review
+        - **Weekly/Monthly summaries**: Get past 30 days to prepare monthly reviews
+        - **Recent insights**: Get past 3 days to find recent thoughts and learnings
+        - **Specific date lookup**: Find journal entries from a particular date
+        - **Calendar-specific browsing**: Browse journals from specific contexts (Work, Personal, etc.)
+        - **Pattern analysis**: Analyze journaling habits and themes over time
+        - **Meeting preparation**: Review related journal entries before meetings
+
+    Note:
+        The 'date' and 'past_days' parameters are mutually exclusive. Use either one or the other, not both.
+    """
+    return journal_provider.get_journals(calendar_name, date, past_days)
+
+
+@journal_mcp.tool("edit_journal")
+def edit_journal(
+    calendar_name: str, summary: str, new_description: str, append: bool = True
+) -> str:
+    """Edit an existing journal entry's description.
+
+    Args:
+        calendar_name (str): Name of the calendar containing the journal
+        summary (str): Journal title/summary to identify which journal to edit
+        new_description (str): New description content to add or replace
+        append (bool): If True (default), append new content with timestamp. If False, replace entirely.
+
+    Returns:
+        str: Success message with journal update details
+
+    Examples:
+        # Append progress update to existing task journal (default behavior)
+        {
+            "calendar_name": "Work",
+            "summary": "Authentication Feature",
+            "new_description": "Completed OAuth integration testing. Ready for code review."
+        }
+
+        # Append meeting follow-up to existing journal
+        {
+            "calendar_name": "Work",
+            "summary": "Q4 Planning Meeting",
+            "new_description": "Action items assigned: John - timeline review by Friday, Sarah - requirements draft by Wednesday.",
+            "append": true
+        }
+
+        # Replace entire description (for major corrections)
+        {
+            "calendar_name": "Personal",
+            "summary": "Weekend Reflection",
+            "new_description": "Corrected previous entry: Had a peaceful weekend focused on family time and outdoor activities.",
+            "append": false
+        }
+
+        # Add daily progress to task tracking
+        {
+            "calendar_name": "Work",
+            "summary": "Database Migration",
+            "new_description": "Day 3: Migration scripts tested on staging environment. Found and fixed 2 data type conflicts."
+        }
+
+    Use cases:
+        - **Task Progress Tracking**: Update ongoing project status and milestones
+        - **Meeting Follow-ups**: Add action items and outcomes to meeting journals
+        - **Daily Work Logs**: Append daily progress to project journals
+        - **Learning Notes**: Add insights and learnings to study journals
+        - **Corrections**: Replace incorrect information with accurate details
+        - **Status Updates**: Track evolving situations and decisions
+
+    The append mode (default) preserves chronological history with timestamps:
+    ```
+    Original content here...
+
+    --- [2025-07-12 15:30] ---
+    New content appended here...
+    ```
+
+    The replace mode completely overwrites the existing description for major corrections or rewrites.
+    """
+    return journal_provider.edit_journal(
+        summary, calendar_name, new_description, append
+    )
+
+
+@journal_mcp.tool("delete_journal")
+def delete_journal(journal_delete: JournalDelete) -> str:
+    """Delete a journal entry from the specified calendar.
+
+    Args:
+        journal_delete (JournalDelete): Journal deletion details with summary, calendar_name, and optional date
+
+    Returns:
+        str: Success message confirming journal deletion
+
+    Examples:
+        # Delete journal when there's only one with that summary
+        {
+            "summary": "Daily Reflection",
+            "calendar_name": "Personal"
+        }
+
+        # Delete specific journal when multiple exist with same summary
+        {
+            "summary": "Today's Updates",
+            "calendar_name": "Work",
+            "date": "2025-07-11"
+        }
+
+        # Delete journal from specific date
+        {
+            "summary": "Weekend Thoughts",
+            "calendar_name": "Personal",
+            "date": "2025-07-12"
+        }
+
+    Use cases:
+        - **Consolidation**: Remove individual journal entries when consolidating multiple entries into a single comprehensive journal
+        - **Duplicate Removal**: Delete duplicate or redundant journal entries
+        - **Cleanup**: Remove outdated or incorrect journal entries
+        - **Organization**: Clean up journal entries that are no longer relevant
+        - **Mistake Correction**: Remove journal entries created by mistake
+
+    Important notes:
+        - If multiple journals exist with the same summary, you must specify the date parameter to distinguish between them
+        - The date parameter should be in ISO format (YYYY-MM-DD)
+        - Deletion is permanent and cannot be undone
+        - Use this tool carefully, especially when consolidating multiple journal entries into one
+    """
+    return journal_provider.delete_journal(journal_delete)
+
+
+if __name__ == "__main__":
+    journal_mcp.run(transport="stdio")
